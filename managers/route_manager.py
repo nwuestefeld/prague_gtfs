@@ -69,3 +69,4 @@ class RouteManager:
                 route.get("last_modify", "Unknown")  # Default to 'Unknown' if None
                 ))
         self.connection.commit()
+        self.connection.close()

@@ -1,2 +1,4 @@
 from .route_manager import RouteManager
-__all__ = ["RouteManager"]
+from .stop_manager import StopManager
+from .trip_manager import TripManager
+__all__ = ["RouteManager", "StopManager", "TripManager"]	
