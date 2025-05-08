@@ -7,7 +7,7 @@ Data is processed for visualisation and analytics tasks
 
 To fetch vehicle positions, the project uses the following API:
 
-- **API URL**: `Yhttps://api.golemio.cz/pid/docs/openapi/` 
+- **API URL**: `https://api.golemio.cz/pid/docs/openapi/` 
 
 ## Setup Instructions
 
