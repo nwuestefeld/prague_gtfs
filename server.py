@@ -14,6 +14,7 @@ import pandas as pd
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 API_URL = "https://api.golemio.cz/v2/public/vehiclepositions"
 
 load_dotenv()
@@ -37,8 +38,11 @@ def create_table():
                         vehicle_id TEXT,
                         gtfs_trip_id TEXT,
                         route_type TEXT,
+                        bearing TEXT,
+                        delay REAL,
                         latitude REAL,
                         longitude REAL,
+                        "state_position" TEXT,
                         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
 
     conn.commit()
@@ -57,27 +61,45 @@ def get_vehicle_positions():
 
 
 def store_vehicle_positions(data):
+ 
+    if not data or "features" not in data:
+        print("No data to store.")
+        return
+    
+    #db setup
     conn = sqlite3.connect('vehicle_positions.db')
     cursor = conn.cursor()
 
     features = data.get("features", [])
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     rows = []
     for feature in features:
+
+        #get highlevel structure of the data
         geometry = feature.get("geometry", {})
         properties = feature.get("properties", {})
-        coordinates = geometry.get("coordinates", [])
-        gtfs_trip_id = properties.get("gtfs_trip_id", "")
-        route_type = properties.get("route_type", "")
-        vehicle_id = properties.get("vehicle_id", "")
-        rows.append((vehicle_id, gtfs_trip_id, route_type, coordinates[1], coordinates[0]))
+        coordinates = geometry.get("coordinates", [None, None])
 
-    # Batch-Insertion for performance
-    cursor.executemany('''INSERT INTO vehicle_positions (vehicle_id, gtfs_trip_id, route_type, latitude, longitude)
-                          VALUES (?, ?, ?, ?, ?)''', rows)
+        rows.append((
+            properties.get("vehicle_id", ""),
+            properties.get("gtfs_trip_id", ""),
+            properties.get("route_type", ""),
+            properties.get("bearing", 0),
+            properties.get("delay", 0),
+            coordinates[1],  # latitude
+            coordinates[0],  # longitude
+            properties.get("state_position", ""),
+            timestamp
+        ))
+
+    cursor.executemany('''INSERT INTO vehicle_positions (
+                            vehicle_id, gtfs_trip_id, route_type, bearing, delay,
+                            latitude, longitude, state_position, timestamp)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', rows)
 
     conn.commit()
     conn.close()
-
 
 
 def main():
