@@ -1,6 +1,7 @@
 # Vehicle Positions API Project
 
-This project fetches vehicle positions from an API and stores them in a database for efficient querying and access. The data is periodically fetched every 30 seconds and stored in an SQLite database. You can interact with the database via a simple API endpoint.
+This project fetches vehicle positions from an API and stores them in a database for efficient querying and access. 
+Data is processed for visualisation and analytics tasks
 
 ## API Endpoint
 
