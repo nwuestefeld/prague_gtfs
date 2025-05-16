@@ -41,8 +41,11 @@ st.subheader("Delay Statistics")
 #filter dataframe
 
 #plot top 10 delays
-#TODO: connect to static database to get features of interest gtfs_trip_id = trip_id ?
-#get trip_id and use in route manager to get route info
+#TODO: vehilce positions db contains gtfs_route_name_short, which is also as key in routes as route_short_name 
 st.subheader("Top 10 Delays")
 top_delays = df_filtered.nlargest(10, 'delay')
 st.dataframe(top_delays[['vehicle_id', 'delay']])
+
+
+
+#TODO: PIE Chart with delay distribution for vehicle types TRAM, METRO, TRAIN, BUS etc

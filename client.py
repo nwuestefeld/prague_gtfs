@@ -9,29 +9,18 @@ class Client:
     def __init__(self):
         load_dotenv()
         self.api_key = os.getenv("API_KEY")
-        if not self.api_key:
-            raise ValueError("API key not found in environment variables.")
-
         self.api_url = os.getenv("API_URL")
-        if not self.api_url:
-            raise ValueError("API URL not found in environment variables.")
-
         self.headers = {"X-Access-Token": self.api_key}
-
         self.db_path = "database.db"
-        self.connection = sqlite3.connect(self.db_path)
-     
-   
 
-      
-        #mange routes
-        routemanager = RouteManager(self.api_url, self.db_path, headers=self.headers)
-        routemanager.set_routes()
-        #manage stops
-        stopmanager = StopManager(self.api_url, self.db_path, headers=self.headers)
-        stopmanager.set_stops()
-        #manage trips
-        tripmanager = TripManager(self.api_url, self.db_path, headers=self.headers)
-        tripmanager.set_trips()
+        self.routemanager = RouteManager(self.api_url, self.db_path, self.headers)
+        self.stopmanager = StopManager(self.api_url, self.db_path, self.headers)
+        self.tripmanager = TripManager(self.api_url, self.db_path, self.headers)
+
+    def run(self):
+        self.routemanager.set_routes()
+        self.stopmanager.set_stops()
+        self.tripmanager.set_trips()
+
 
 #ToDo: überlegen wie realtime zeug aussehen soll

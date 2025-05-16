@@ -5,3 +5,5 @@ __pycache__/
 *.pyo
 *.pyd
 .env
+clouds.yaml
+vehicle_positions.db
