@@ -22,6 +22,7 @@ ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect(hostname=hostname, username=username, key_filename=key_path)
 #Query: TODO: Adjust query for modular requests: fetch all vehicle positions from last 20 min, ...
 #classification: TODO: Add classification for vehicle positions: center, outskirts, ...
+#TODO: add gtfs_trip_id. über trip_id bekomm ich die richtung und  route_id, da bekomme ich die restlichen infos
 sql_query = """
 SELECT 
     vehicle_id, 

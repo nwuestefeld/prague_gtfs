@@ -112,7 +112,7 @@ with tab3:
         idx = df.groupby('vehicle_id')['delay'].idxmax()
         df_max_delays = df.loc[idx].reset_index(drop=True)
         top_delays = df_max_delays.nlargest(10, 'delay')
-        st.dataframe(top_delays[['vehicle_id', 'route_type', 'delay', 'timestamp']])
+        st.dataframe(top_delays[['gtfs_route_short_name','vehicle_id', 'route_type',  'delay', 'timestamp']])
     else:
         st.info("No data available for top 10 delays.")
 

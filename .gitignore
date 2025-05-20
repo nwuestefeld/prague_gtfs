@@ -7,3 +7,4 @@ __pycache__/
 .env
 clouds.yaml
 vehicle_positions.db
+private_key_server.pem
