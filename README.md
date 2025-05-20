@@ -43,6 +43,8 @@ These dependencies are listed in the `requirements.txt` file. You can install th
     ```bash
     API_KEY=your_api_key_here
     API_URL=https://your-api-url.com/endpoint
+    SERVER_ADRESS = "12345.123"
+    USER = "your username"
     ```
 5. **Run with Streamlit**:
    ```bash
