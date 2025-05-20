@@ -13,7 +13,8 @@ To fetch vehicle positions, the project uses the following API:
 
 ### Requirements
 
-To run this project, you need to install the required Python dependencies. These dependencies are listed in the `requirements.txt` file. You can install them using `pip`:
+To run this project, you need to install the required Python dependencies and obtain the `.env` file and `server key` from the admin.
+These dependencies are listed in the `requirements.txt` file. You can install them using `pip`:
 
 1. **Create a Virtual Environment** (if you don't have one already):
 
@@ -22,6 +23,15 @@ To run this project, you need to install the required Python dependencies. These
     ```
 
 2. **Active the Venv**
+   ### Linux
+    ```bash
+    source meinenv/bin/activate
+    ```
+    
+    ### Windows
+    ```powershell
+    venv\Scripts\Activate.ps1
+    ```
 
 3. **Install the requirements**
    ```bash
