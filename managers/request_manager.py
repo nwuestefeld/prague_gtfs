@@ -8,19 +8,29 @@ from dotenv import load_dotenv
 class RequestManager:
     def __init__(self):
         self.load_env()
+        self.connect()
+
+
+
+ 
+    
+    def load_env(self):
+        load_dotenv()
+
+
+    def connect(self):
         self.hostname = os.getenv("SERVER_ADRESS")
         self.username = os.getenv("USER")
-        self.key_path = os.getenv("KEY_PATH")
+        self.key_path = "C:\\Users\\nilsw\\Documents\\prague_gtfs\\private_key_server.pem"
+        #self.key = paramiko.RSAKey.from_private_key_file(self.key_path)
         self.remote_db_path ="vehicle_positions.db"
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.ssh.connect(hostname=self.hostname, username=self.username, key_filename=self.key_path)
 
-    
-    def load_env(self):
-        load_dotenv()
+
         
-    def server_request(self, sql_query):
+    def server_request(self, sql_query, columns=None):
         """
         Executes a SQL query on the remote SQLite database and returns the result as a pandas DataFrame.
         """
@@ -33,5 +43,22 @@ class RequestManager:
             print("Error:", error)
             return None
         else:
-            df = pd.read_csv(StringIO(output))
+            df = pd.read_csv(StringIO(output), sep="|", header=None)
+
+            if columns is not None:
+                if len(columns) == df.shape[1]:
+                    df.columns = columns
+            else:
+                df.columns = [
+                "vehicle_id",
+                "gtfs_trip_id",
+                "route_type",
+                "gtfs_route_short_name",
+                "bearing",
+                "delay",
+                "latitude",
+                "longitude",
+                "state_position",
+                "timestamp"
+            ]
             return df

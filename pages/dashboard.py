@@ -3,6 +3,7 @@ import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
+from managers.request_manager import RequestManager
 
 #Page setup
 st.set_page_config(
@@ -11,8 +12,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-# Page title
-#st.title("Delay Dashboard")
+
 
 # Create tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -61,42 +61,44 @@ with tab1:
             st.error("Start date must be before end date.")
         else:
             st.success(f"Filters applied: Vehicle Type: {vehicle_type}, Date Range: {start_date} to {end_date}")
-            query = "SELECT * FROM vehicle_positions WHERE delay IS NOT NULL"
+            query = "SELECT gtfs_trip_id, vehicle_id, route_type, gtfs_route_short_name, AVG(delay) AS mean_delay, MIN(timestamp) AS first_timestamp FROM vehicle_positions WHERE delay IS NOT NULL"
             if vehicle_type != "All":
                 query += f" AND route_type = '{vehicle_type}'"
             if min_delay > 0:
                 query += f" AND delay BETWEEN {min_delay} AND 7200"
+           # query += f" AND timestamp BETWEEN '{start_date}' AND '{end_date}'"
+            query += f" GROUP BY gtfs_trip_id "
     #send query to db
+        columns = ["gtfs_trip_id", "vehicle_id","route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
+        rm = RequestManager()
+        df = rm.server_request(query, columns=columns)
     
-    conn = sqlite3.connect("vehicle_positions.db")
-    query = """SELECT * FROM vehicle_positions WHERE delay IS NOT NULL AND delay > 60"""
-    df = pd.read_sql_query(query, conn)
-    conn.close()
+        if df.empty:
+            st.warning("No data available for the selected filter.")
+        else:
+            st.success(f"{len(df)} observations of vehicle type {vehicle_type} have a delay over {min_delay} seconds.")
+            fig, ax = plt.subplots()
+            ax.hist(df['delay'], bins=20, edgecolor='black', color='skyblue')
+            ax.set_title("Distribution of Delays")
+            ax.set_xlabel("Delay (seconds)")
+            ax.set_ylabel("Number of observations")
+            st.pyplot(fig)
+   
 
-    df_filtered = df.copy()
    # if vehicle_type != "All":
    #     df_filtered = df_filtered[df_filtered['route_type'] == vehicle_type]
    # if max_delay > 0:
    #     df_filtered = df_filtered[df_filtered['delay'] <= max_delay]
 
-    if df_filtered.empty:
-        st.warning("No data available for the selected filter.")
-    else:
-        st.success(f"{len(df_filtered)} observations of vehicle type {vehicle_type} have a delay over {min_delay} seconds.")
-        fig, ax = plt.subplots()
-        ax.hist(df_filtered['delay'], bins=20, edgecolor='black', color='skyblue')
-        ax.set_title("Distribution of Delays")
-        ax.set_xlabel("Delay (seconds)")
-        ax.set_ylabel("Number of observations")
-        st.pyplot(fig)
+ 
 
 # Tab 2: Delay Statistics
 with tab2:
     st.subheader("Delay Statistics")
     st.write("Mean and maximum delay grouped by vehicle type.")
 
-    if not df_filtered.empty:
-        stats = df_filtered.groupby('route_type')['delay'].agg(['count', 'mean', 'max']).round(1)
+    if not df.empty:
+        stats = df.groupby('route_type')['delay'].agg(['count', 'mean', 'max']).round(1)
         stats.columns = ['Count', 'Mean Delay', 'Max Delay']
         st.dataframe(stats)
     else:
@@ -106,24 +108,24 @@ with tab2:
 with tab3:
     st.subheader("Top 10 Delays")
 
-    if not df_filtered.empty:
+    #if not df.empty:
         #only get the largest degree for each vehicle (have repeated measures)
 
-        idx = df.groupby('vehicle_id')['delay'].idxmax()
-        df_max_delays = df.loc[idx].reset_index(drop=True)
-        top_delays = df_max_delays.nlargest(10, 'delay')
-        st.dataframe(top_delays[['gtfs_route_short_name','vehicle_id', 'route_type',  'delay', 'timestamp']])
-    else:
-        st.info("No data available for top 10 delays.")
+        #idx = df.groupby('vehicle_id')['delay'].idxmax()
+        #df_max_delays = df.loc[idx].reset_index(drop=True)
+        #top_delays = df_max_delays.nlargest(10, 'delay')
+        #st.dataframe(top_delays[['gtfs_route_short_name','vehicle_id', 'route_type',  'delay', 'timestamp']])
+    #else:
+    #    st.info("No data available for top 10 delays.")
 
 # Tab 4: Pie Chart
 with tab4:
     st.subheader("Delay Distribution by Vehicle Type")
     st.write("This page shows the distribution of delays by vehicle type in a pie chart.")
 
-    if not df_filtered.empty:
-        count_by_type = df_filtered.groupby("route_type")["vehicle_id"].nunique()
-        delay_by_type = df_filtered.groupby('route_type')['delay'].sum().sort_values(ascending=False)
+    if not df.empty:
+        count_by_type = df.groupby("route_type")["vehicle_id"].nunique()
+        delay_by_type = df.groupby('route_type')['delay'].sum().sort_values(ascending=False)
 
 
         pie_df = pd.DataFrame({
@@ -156,7 +158,7 @@ with tab6:
     st.write("This page allows you to export the filtered data to a CSV file.")
     st.download_button(
         label="Download CSV",
-        data=df_filtered.to_csv(index=False).encode('utf-8'),
+        data=df.to_csv(index=False).encode('utf-8'),
         file_name='filtered_vehicle_positions.csv',
         mime='text/csv'
     )

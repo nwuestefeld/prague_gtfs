@@ -26,15 +26,16 @@ ssh.connect(hostname=hostname, username=username, key_filename=key_path)
 sql_query = """
 SELECT 
     vehicle_id, 
+    gtfs_trip_id,
     gtfs_route_short_name, 
-    latitude, 
-    longitude, 
-    delay, 
+    AVG(delay) AS delay, 
     timestamp 
 FROM vehicle_positions 
-ORDER BY timestamp DESC 
+GROUP BY gtfs_trip_id
+ORDER BY mean_delay DESC 
 LIMIT 20;
 """
+
 
 #db on server
 remote_db_path = "vehicle_positions.db"
@@ -53,5 +54,6 @@ else:
     df = pd.read_csv(StringIO(output), sep="|")
     #print(df)
     print(df.info())
+    print(df.head())
 
 ssh.close()
