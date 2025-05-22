@@ -45,9 +45,10 @@ with tab1:
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             vehicle_type = st.selectbox(
-                "Select vehicle type",
-                ["All", "tram", "metro", "train", "bus"]
+            "Select vehicle type",
+            ["All", "tram", "metro", "train", "bus"]
             )
+
         with col2:
             start_date = st.date_input("Select Start date")
         with col3:
@@ -62,8 +63,8 @@ with tab1:
         else:
             st.success(f"Filters applied: Vehicle Type: {vehicle_type}, Date Range: {start_date} to {end_date}")
             query = "SELECT gtfs_trip_id, vehicle_id, route_type, gtfs_route_short_name, AVG(delay) AS mean_delay, MIN(timestamp) AS first_timestamp FROM vehicle_positions WHERE delay IS NOT NULL"
-            if vehicle_type != "All":
-                query += f" AND route_type = '{vehicle_type}'"
+            #if vehicle_type != "All":
+            #    query += f" AND route_type = '{vehicle_type}'"
             if min_delay > 0:
                 query += f" AND delay BETWEEN {min_delay} AND 7200"
            # query += f" AND timestamp BETWEEN '{start_date}' AND '{end_date}'"
@@ -72,17 +73,33 @@ with tab1:
         columns = ["gtfs_trip_id", "vehicle_id","route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
         rm = RequestManager()
         df = rm.server_request(query, columns=columns)
-    
-        if df.empty:
+        df1 = df.copy()
+        if vehicle_type != "All":
+            df1 = df[df['route_type'] == vehicle_type]
+
+
+        print(df["route_type"].unique())
+        if df is None:
+            st.error("Server request returned None!")
+        elif df.empty:
             st.warning("No data available for the selected filter.")
         else:
-            st.success(f"{len(df)} observations of vehicle type {vehicle_type} have a delay over {min_delay} seconds.")
+            st.success(f"{len(df1)} observations of vehicle type {vehicle_type} have a delay over {min_delay} seconds.")
             fig, ax = plt.subplots()
-            ax.hist(df['delay'], bins=20, edgecolor='black', color='skyblue')
+            ax.hist(df1['delay'], bins=20, edgecolor='black', color='skyblue')
             ax.set_title("Distribution of Delays")
             ax.set_xlabel("Delay (seconds)")
             ax.set_ylabel("Number of observations")
             st.pyplot(fig)
+        
+    st.subheader("Delay Statistics")
+    st.write("Mean and maximum delay grouped by vehicle type.")
+    if not df.empty:
+        stats = df.groupby('route_type')['delay'].agg(['count', 'mean', 'max']).round(1)
+        stats.columns = ['Count', 'Mean Delay', 'Max Delay']
+        st.dataframe(stats)
+    else:
+        st.info("No statistics available for the current selection.")
    
 
    # if vehicle_type != "All":
