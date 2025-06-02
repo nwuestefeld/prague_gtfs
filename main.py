@@ -30,5 +30,10 @@ def main():
         st.sidebar.info("Navigate using the sidebar.")
         st.write("This is the home page after login.")
 
+        if st.button("Refresh Data"):
+            client = Client()
+            with st.spinner("loading data..."):
+                client.run()
+            st.success("Your database is up to date!")
 if __name__ == "__main__":
     main()

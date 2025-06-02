@@ -1,10 +1,9 @@
 import requests
 import sqlite3
-
 class RouteManager:
     def __init__(self, api_url, db_path, headers):
         self.api_url = api_url
-        self.db_path = db_path  # Pfad zur DB statt Connection
+        self.db_path = db_path  
         self.headers = headers
 
     def get_routes(self):
@@ -13,7 +12,7 @@ class RouteManager:
         if response.status_code == 200:
             return response.json()
         else:
-            raise Exception(f"Error fetching routes: {response.status_code}")       
+            raise Exception(f"Error fetching routes: {response.status_code}")
 
     def create_route_table(self):
         with sqlite3.connect(self.db_path) as conn:
@@ -36,7 +35,7 @@ class RouteManager:
                 )
             """)
             conn.commit()
-            conn.close()
+            # dont close her for refresh
 
     def set_routes(self):
         self.create_route_table()
@@ -67,4 +66,5 @@ class RouteManager:
                     route.get("last_modify", "Unknown")
                 ))
             conn.commit()
-            conn.close()
+            
+

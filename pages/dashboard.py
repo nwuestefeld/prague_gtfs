@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 from managers.request_manager import RequestManager
+from managers.trip_manager import TripManager
 
 # Page setup
 st.set_page_config(
@@ -112,12 +113,12 @@ with tab1:
                 default=vehicle_types
             )
 
-            # Zeitspanne berechnen
+            # spanning the time range
             ts_min = pd.to_datetime(df1['first_timestamp'].min())
             ts_max = pd.to_datetime(df1['first_timestamp'].max())
             duration = ts_max - ts_min
 
-            # Intervall-Optionen basierend auf Zeitspanne
+            # Intervall-options
             interval_options = []
             if duration >= pd.Timedelta(minutes=5):
                 interval_options.append("5min")
@@ -135,18 +136,18 @@ with tab1:
                     if not filtered_df.empty:
                         filtered_df['first_timestamp'] = pd.to_datetime(filtered_df['first_timestamp'])
 
-                        # Zeitintervall wählen
+                        # intervall switch
                         if selected_interval == "5min":
                             filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("5min")
                         elif selected_interval == "hourly":
-                            filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("H")
+                            filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("h")
                         elif selected_interval == "daily":
                             filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("D")
 
-                        # Abfrage, ob Durchschnitt über alle Vehicle Types gezeigt werden soll
+                        # show avg checkbox
                         show_overall_avg = st.checkbox("Show average over all selected vehicle types", value=True)
 
-                        # Verzögerung pro Fahrzeugtyp und Zeitintervall
+                        # delay per intervall and vehicle type
                         delay_by_type = (
                             filtered_df.groupby(['time_bin', 'route_type'])['delay'].mean().reset_index()
                         )
@@ -180,8 +181,6 @@ with tab1:
                     st.warning("Please select at least one vehicle type.")
 
 
-# ... rest of your tabs (tab2, tab3, etc.) unverändert
-
 
    # if vehicle_type != "All":
    #     df_filtered = df_filtered[df_filtered['route_type'] == vehicle_type]
@@ -193,14 +192,14 @@ with tab1:
 # Tab 2: Delay Statistics
 with tab2:
     st.subheader("Delay Statistics")
-    st.write("Delayed Trips per  vehicle type.")
+    st.write("Delayed Lines per  vehicle type.")
 
     if not df.empty:
         trip_stats = df.groupby(['gtfs_trip_id', 'route_type'])['delay'].agg(['count', 'mean', 'max']).reset_index()
         stats = trip_stats.groupby('route_type')[['count', 'mean', 'max']].agg({
-            'count': 'sum',   # Summe der Beobachtungen über alle Trips
-            'mean': 'mean',   # Durchschnittliche mittlere Verspätung pro Trip
-            'max': 'max'      # Höchste Maximalverspätung unter den Trips
+            'count': 'sum',   # sum
+            'mean': 'mean',   # avg
+            'max': 'max'      # maxs
             }).round(1)
 
         stats.columns = ['Total Observations', 'Avg of Mean Delays', 'Max of Max Delays']
@@ -212,6 +211,17 @@ with tab2:
 # Tab 3: Top 10 Delays
 with tab3:
     st.subheader("Placeholder")
+
+    if df.empty:
+        st.info("No data available to display top delays.")
+    else:
+        top_delays = df.groupby('gtfs_trip_id')['delay'].max().reset_index().sort_values(by='delay', ascending=False).head(10)
+        top_delay_list = top_delays['gtfs_trip_id'].tolist()
+        extra_cols = TripManager().get_infos_by_trip_id(top_delay_list)
+        extra_cols = extra_cols.rename(columns={'trip_id': 'gtfs_trip_id'})
+        top_delays = top_delays.merge(extra_cols, on='gtfs_trip_id', how='left')
+        st.write("Top 10 Delays by Vehicle Type")
+        st.dataframe(top_delays)
 
 # Tab 4: Pie Chart
 with tab4:

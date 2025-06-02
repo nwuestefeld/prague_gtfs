@@ -1,11 +1,16 @@
 import requests
 import sqlite3
+import os
+from dotenv import load_dotenv
+import pandas as pd
 
 class TripManager:
-    def __init__(self, api_url, db_path, headers):
-        self.api_url = api_url
-        self.db_path = db_path  # Pfad zur DB, keine Connection mehr
-        self.headers = headers
+    def __init__(self):
+        load_dotenv()
+        self.api_key = os.getenv("API_KEY")
+        self.api_url = os.getenv("API_URL")
+        self.headers = {"X-Access-Token": self.api_key}
+        self.db_path = "database.db"
 
     def create_trip_table(self):
         with sqlite3.connect(self.db_path) as conn:
@@ -26,7 +31,7 @@ class TripManager:
                 )
             """)
             conn.commit()
-            conn.close()
+            # kein conn.close()
 
     def get_trips(self):
         url = f"{self.api_url}/trips"
@@ -62,4 +67,30 @@ class TripManager:
                     trip.get("last_modify")
                 ))
             conn.commit()
-            conn.close()
+            # kein conn.close()
+
+    def get_infos_by_trip_id(self, trip_ids):
+        if not trip_ids:
+            return pd.DataFrame()  
+
+        placeholders = ",".join("?" for _ in trip_ids)  #  "?, ?, ?"
+        query = f"""
+            SELECT
+                trips.trip_id,
+                trips.shape_id,
+                routes.route_short_name,
+                routes.route_long_name,
+                routes.route_color
+            FROM trips
+            LEFT JOIN routes ON trips.route_id = routes.route_id
+            WHERE trips.trip_id IN ({placeholders})
+        """
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, trip_ids)
+            rows = cursor.fetchall()
+
+        columns = ["trip_id", "shape_id", "route_short_name", "route_long_name", "route_color"]
+        df = pd.DataFrame(rows, columns=columns)
+        return df

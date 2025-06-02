@@ -33,7 +33,7 @@ class StopManager:
                 )
             """)
             conn.commit()
-            conn.close()
+            # kein conn.close()
 
     def set_stops(self):
         self.create_stop_table()
@@ -61,4 +61,4 @@ class StopManager:
                     coords[1]
                 ))
             conn.commit()
-            conn.close()
+            # no conn.close()
