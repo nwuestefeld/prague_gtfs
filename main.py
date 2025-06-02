@@ -4,6 +4,23 @@ import streamlit as st
 
 import streamlit as st
 
+
+def hide_sidebar():
+    hide_style = """
+        <style>
+        /* Verstecke die Sidebar */
+        .css-1d391kg, .css-1oe6wy4 {
+            display: none !important;
+        }
+        /* Verstecke Toggle-Button */
+        button[title="Toggle sidebar"] {
+            display: none !important;
+        }
+        </style>
+    """
+    st.markdown(hide_style, unsafe_allow_html=True)
+
+
 def show_login():
     st.title("Login Page")
 
@@ -23,6 +40,7 @@ def main():
         st.session_state["logged_in"] = False
 
     if not st.session_state["logged_in"]:
+        hide_sidebar()
         show_login()
     else:
         st.title("Welcome to the GTFS App!")
