@@ -15,7 +15,7 @@ class Client:
 
         self.routemanager = RouteManager(self.api_url, self.db_path, self.headers)
         self.stopmanager = StopManager(self.api_url, self.db_path, self.headers)
-        self.tripmanager = TripManager(self.api_url, self.db_path, self.headers)
+        self.tripmanager = TripManager()
 
     def run(self):
         self.routemanager.set_routes()

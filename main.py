@@ -2,32 +2,56 @@ from client import Client
 import streamlit as st
 
 
-def main(): 
-    #setup database 
-    client = Client()
-    #init steamlit
-    #st.title("Prague GTFS Data")
-    #st.sidebar.title("Navigation")
+import streamlit as st
+
+
+def hide_sidebar():
+    hide_style = """
+        <style>
+        /* Verstecke die Sidebar */
+        .css-1d391kg, .css-1oe6wy4 {
+            display: none !important;
+        }
+        /* Verstecke Toggle-Button */
+        button[title="Toggle sidebar"] {
+            display: none !important;
+        }
+        </style>
+    """
+    st.markdown(hide_style, unsafe_allow_html=True)
+
+
+def show_login():
     st.title("Login Page")
-   
+
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
+
     if st.button("Login"):
-        # TODO authlogic
         if username == "admin" and password == "admin":
-            st.success("Login successful!")
             st.session_state["logged_in"] = True
-            st.experimental_rerun()
+            st.success("Login successful!")
+            st.rerun()
         else:
             st.error("Invalid username or password")
-    if "logged_in" in st.session_state and st.session_state["logged_in"]:
-        st.success("You are logged in!")
+
+def main():
+    if "logged_in" not in st.session_state:
+        st.session_state["logged_in"] = False
+
+    if not st.session_state["logged_in"]:
+        hide_sidebar()
+        show_login()
+    else:
+        st.title("Welcome to the GTFS App!")
         st.sidebar.success("You are logged in!")
-        st.sidebar.title("Navigation")
-        st.sidebar.write("Welcome to the app!")
-        st.sidebar.write("Please select a page from the sidebar.")
-        st.experimental_rerun()
+        st.sidebar.info("Navigate using the sidebar.")
+        st.write("This is the home page after login.")
 
-
+        if st.button("Refresh Data"):
+            client = Client()
+            with st.spinner("loading data..."):
+                client.run()
+            st.success("Your database is up to date!")
 if __name__ == "__main__":
     main()

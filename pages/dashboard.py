@@ -4,15 +4,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 from managers.request_manager import RequestManager
+from managers.trip_manager import TripManager
 
-#Page setup
+# Page setup
 st.set_page_config(
     page_title="Delay Dashboard",
     page_icon=" :bar_chart:",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
 
 # Create tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -24,31 +24,25 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Export Data"
 ])
 
-
 # Connect to the SQLite database (default)
 conn = sqlite3.connect("vehicle_positions.db")
 query = """SELECT * FROM vehicle_positions WHERE delay IS NOT NULL AND delay > 60"""
 df = pd.read_sql_query(query, conn)
 conn.close()
 
-
 # Tab 1: Delay Distribution
 with tab1:
     st.subheader("Delay Distribution")
     st.write("This page shows the distribution of delays by vehicle type.")
 
-
-
-    #setup form for filtering
-    st.write("Filter the data by vehicle type and date range.")
+    # Setup filter form
     with st.form("filter_form"):
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             vehicle_type = st.selectbox(
-            "Select vehicle type",
-            ["All", "tram", "metro", "train", "bus"]
+                "Select vehicle type",
+                ["All", "tram", "metro", "train", "bus"]
             )
-
         with col2:
             start_date = st.date_input("Select Start date")
         with col3:
@@ -63,44 +57,130 @@ with tab1:
         else:
             st.success(f"Filters applied: Vehicle Type: {vehicle_type}, Date Range: {start_date} to {end_date}")
             query = "SELECT gtfs_trip_id, vehicle_id, route_type, gtfs_route_short_name, AVG(delay) AS mean_delay, MIN(timestamp) AS first_timestamp FROM vehicle_positions WHERE delay IS NOT NULL"
-            #if vehicle_type != "All":
-            #    query += f" AND route_type = '{vehicle_type}'"
             if min_delay > 0:
                 query += f" AND delay BETWEEN {min_delay} AND 7200"
-           # query += f" AND timestamp BETWEEN '{start_date}' AND '{end_date}'"
+            # Hier kann noch Datum-Filter ergänzt werden
             query += f" GROUP BY gtfs_trip_id "
-    #send query to db
-        columns = ["gtfs_trip_id", "vehicle_id","route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
-        rm = RequestManager()
-        df = rm.server_request(query, columns=columns)
-        df1 = df.copy()
-        if vehicle_type != "All":
-            df1 = df[df['route_type'] == vehicle_type]
+            
+            columns = ["gtfs_trip_id", "vehicle_id","route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
+            rm = RequestManager()
+            df = rm.server_request(query, columns=columns)
+            df1 = df.copy()
+            if vehicle_type != "All":
+                df1 = df1[df1['route_type'] == vehicle_type]
+
+            # Speichere df1 in session_state
+            st.session_state["df1"] = df1
+
+            # Anzeigen und Plots
+            if df is None:
+                st.error("Server request returned None!")
+            elif df.empty:
+                st.warning("No data available for the selected filter.")
+            else:
+                if not df1.empty:
+                    mean_delay_trip = df1.groupby('gtfs_trip_id')['delay'].mean().reset_index()
+                    unique_mean_delay = mean_delay_trip['delay'].nunique()
+                    st.success(f"{unique_mean_delay} Trips of vehicle type {vehicle_type} have a delay over {min_delay} seconds.")
+                    fig, ax = plt.subplots()
+                    ax.hist(df1['delay'], bins=20, edgecolor='black', color='skyblue')
+                    ax.set_title("Distribution of Delays")
+                    ax.set_xlabel("Delay (seconds)")
+                    ax.set_ylabel("Number of observations")
+                    st.pyplot(fig)
+                else:
+                    st.success(f"No delay data of vehicle type {vehicle_type} over {min_delay} seconds.")
+
+            st.subheader("Delay Statistics")
+            st.write("Mean and maximum delay grouped by vehicle type.")
+            if not df.empty:
+                stats = df.groupby('route_type')['delay'].agg(['count', 'mean', 'max']).round(1)
+                stats.columns = ['Count', 'Mean Delay', 'Max Delay']
+                st.dataframe(stats)
+            else:
+                st.info("No statistics available for the current selection.")
+
+    # Zweiter Filter-Form-Block (Fahrzeugtypen-Auswahl für Plot)
+    # Verwende df1 aus session_state, falls vorhanden
+    if "df1" in st.session_state and not st.session_state["df1"].empty:
+        df1 = st.session_state["df1"]
+        vehicle_types = sorted(df1['route_type'].dropna().unique())
+
+        with st.form("vehicle_type_form"):
+            selected_types = st.multiselect(
+                "Select vehicle types to include in the plot:",
+                options=vehicle_types,
+                default=vehicle_types
+            )
+
+            # spanning the time range
+            ts_min = pd.to_datetime(df1['first_timestamp'].min())
+            ts_max = pd.to_datetime(df1['first_timestamp'].max())
+            duration = ts_max - ts_min
+
+            # Intervall-options
+            interval_options = []
+            if duration >= pd.Timedelta(minutes=5):
+                interval_options.append("5min")
+            if duration >= pd.Timedelta(hours=1):
+                interval_options.append("hourly")
+            if duration >= pd.Timedelta(days=1):
+                interval_options.append("daily")
+
+            selected_interval = st.selectbox("Select aggregation interval", interval_options)
+            apply = st.form_submit_button("Apply")
+
+            if apply:
+                if selected_types:
+                    filtered_df = df1[df1['route_type'].isin(selected_types)].copy()
+                    if not filtered_df.empty:
+                        filtered_df['first_timestamp'] = pd.to_datetime(filtered_df['first_timestamp'])
+
+                        # intervall switch
+                        if selected_interval == "5min":
+                            filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("5min")
+                        elif selected_interval == "hourly":
+                            filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("h")
+                        elif selected_interval == "daily":
+                            filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("D")
+
+                        # show avg checkbox
+                        show_overall_avg = st.checkbox("Show average over all selected vehicle types", value=True)
+
+                        # delay per intervall and vehicle type
+                        delay_by_type = (
+                            filtered_df.groupby(['time_bin', 'route_type'])['delay'].mean().reset_index()
+                        )
+
+                        fig = px.line(
+                            delay_by_type,
+                            x='time_bin',
+                            y='delay',
+                            color='route_type',
+                            title=f'Average Delay ({selected_interval}) by Vehicle Type',
+                            labels={'time_bin': 'Time', 'delay': 'Average Delay (seconds)', 'route_type': 'Vehicle Type'}
+                        )
+
+                        # Durchschnitt über alle Vehicle Types optional hinzufügen
+                        if show_overall_avg:
+                            delay_overall = (
+                                filtered_df.groupby('time_bin')['delay'].mean().reset_index()
+                            )
+                            fig.add_scatter(
+                                x=delay_overall['time_bin'],
+                                y=delay_overall['delay'],
+                                mode='lines',
+                                line=dict(color='black', width=3, dash='dash'),
+                                name='Overall Average'
+                            )
+
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.warning("No data available for the selected vehicle types.")
+                else:
+                    st.warning("Please select at least one vehicle type.")
 
 
-        print(df["route_type"].unique())
-        if df is None:
-            st.error("Server request returned None!")
-        elif df.empty:
-            st.warning("No data available for the selected filter.")
-        else:
-            st.success(f"{len(df1)} observations of vehicle type {vehicle_type} have a delay over {min_delay} seconds.")
-            fig, ax = plt.subplots()
-            ax.hist(df1['delay'], bins=20, edgecolor='black', color='skyblue')
-            ax.set_title("Distribution of Delays")
-            ax.set_xlabel("Delay (seconds)")
-            ax.set_ylabel("Number of observations")
-            st.pyplot(fig)
-        
-    st.subheader("Delay Statistics")
-    st.write("Mean and maximum delay grouped by vehicle type.")
-    if not df.empty:
-        stats = df.groupby('route_type')['delay'].agg(['count', 'mean', 'max']).round(1)
-        stats.columns = ['Count', 'Mean Delay', 'Max Delay']
-        st.dataframe(stats)
-    else:
-        st.info("No statistics available for the current selection.")
-   
 
    # if vehicle_type != "All":
    #     df_filtered = df_filtered[df_filtered['route_type'] == vehicle_type]
@@ -112,28 +192,36 @@ with tab1:
 # Tab 2: Delay Statistics
 with tab2:
     st.subheader("Delay Statistics")
-    st.write("Mean and maximum delay grouped by vehicle type.")
+    st.write("Delayed Lines per  vehicle type.")
 
     if not df.empty:
-        stats = df.groupby('route_type')['delay'].agg(['count', 'mean', 'max']).round(1)
-        stats.columns = ['Count', 'Mean Delay', 'Max Delay']
+        trip_stats = df.groupby(['gtfs_trip_id', 'route_type'])['delay'].agg(['count', 'mean', 'max']).reset_index()
+        stats = trip_stats.groupby('route_type')[['count', 'mean', 'max']].agg({
+            'count': 'sum',   # sum
+            'mean': 'mean',   # avg
+            'max': 'max'      # maxs
+            }).round(1)
+
+        stats.columns = ['Total Observations', 'Avg of Mean Delays', 'Max of Max Delays']
+        st.dataframe(stats)
         st.dataframe(stats)
     else:
         st.info("No statistics available for the current selection.")
 
 # Tab 3: Top 10 Delays
 with tab3:
-    st.subheader("Top 10 Delays")
+    st.subheader("Placeholder")
 
-    #if not df.empty:
-        #only get the largest degree for each vehicle (have repeated measures)
-
-        #idx = df.groupby('vehicle_id')['delay'].idxmax()
-        #df_max_delays = df.loc[idx].reset_index(drop=True)
-        #top_delays = df_max_delays.nlargest(10, 'delay')
-        #st.dataframe(top_delays[['gtfs_route_short_name','vehicle_id', 'route_type',  'delay', 'timestamp']])
-    #else:
-    #    st.info("No data available for top 10 delays.")
+    if df.empty:
+        st.info("No data available to display top delays.")
+    else:
+        top_delays = df.groupby('gtfs_trip_id')['delay'].max().reset_index().sort_values(by='delay', ascending=False).head(10)
+        top_delay_list = top_delays['gtfs_trip_id'].tolist()
+        extra_cols = TripManager().get_infos_by_trip_id(top_delay_list)
+        extra_cols = extra_cols.rename(columns={'trip_id': 'gtfs_trip_id'})
+        top_delays = top_delays.merge(extra_cols, on='gtfs_trip_id', how='left')
+        st.write("Top 10 Delays by Vehicle Type")
+        st.dataframe(top_delays)
 
 # Tab 4: Pie Chart
 with tab4:
