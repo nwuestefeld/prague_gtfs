@@ -1,57 +1,33 @@
 from client import Client
 import streamlit as st
 
-
-import streamlit as st
-
-
-def hide_sidebar():
-    hide_style = """
-        <style>
-        /* Verstecke die Sidebar */
-        .css-1d391kg, .css-1oe6wy4 {
-            display: none !important;
-        }
-        /* Verstecke Toggle-Button */
-        button[title="Toggle sidebar"] {
-            display: none !important;
-        }
-        </style>
-    """
-    st.markdown(hide_style, unsafe_allow_html=True)
-
-
-def show_login():
-    st.title("Login Page")
-
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Login"):
-        if username == "admin" and password == "admin":
-            st.session_state["logged_in"] = True
-            st.success("Login successful!")
-            st.rerun()
-        else:
-            st.error("Invalid username or password")
-
 def main():
-    if "logged_in" not in st.session_state:
-        st.session_state["logged_in"] = False
+    st.title("Welcome to the GTFS App!")
+    st.sidebar.info("Navigate using the sidebar.")
+    st.write("""
+        This Dashboard is designed to help you explore and analyze GTFS data from the Prague public transport system.
 
-    if not st.session_state["logged_in"]:
-        hide_sidebar()
-        show_login()
-    else:
-        st.title("Welcome to the GTFS App!")
-        st.sidebar.success("You are logged in!")
-        st.sidebar.info("Navigate using the sidebar.")
-        st.write("This is the home page after login.")
+        You can:
+        - View trip delays in real-time
+        - Filter trips and apply various analysis parameters
+        - Visualize delays on a map
+        - Get insights on stops
+        - Export data for further analysis
 
-        if st.button("Refresh Data"):
-            client = Client()
-            with st.spinner("loading data..."):
-                client.run()
-            st.success("Your database is up to date!")
+        Use the sidebar to navigate through the different views and tools.  
+             
+        The realtime data is automatically updated from the server, ensuring you always have the latest information at your fingertips.
+        If you want to refresh the stationary data, click the "Refresh Data" button below.
+        
+             
+        For more information, please refer to the documentation or contact the Admins
+        """)
+
+    if st.button("Refresh Data"):
+        client = Client()
+        with st.spinner("Loading data..."):
+            client.run()
+        st.success("Your database is up to date!")
+
 if __name__ == "__main__":
     main()
