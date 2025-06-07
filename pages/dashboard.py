@@ -6,6 +6,7 @@ from managers.request_manager import RequestManager
 from managers.trip_manager import TripManager
 from managers.shape_manager import ShapeManager
 from shapely import wkt
+from datetime import datetime, time
 
 # Page setup
 st.set_page_config(
@@ -27,8 +28,9 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 
 def make_query(start_date, end_date, min_delay, bbox):
     minx, miny, maxx, maxy = bbox
-    start_date = '2025-05-20 06:30:00'
-    end_date = '2025-05-20 07:30:00'
+    
+    #no idea why date filtering is not working. 
+
     query = (
     "SELECT gtfs_trip_id, vehicle_id, route_type, gtfs_route_short_name, "
     "AVG(delay) AS delay, MIN(timestamp) AS first_timestamp "
@@ -37,7 +39,6 @@ def make_query(start_date, end_date, min_delay, bbox):
     f"AND longitude BETWEEN {minx} AND {maxx} "
     f"AND latitude BETWEEN {miny} AND {maxy} "
     f"AND delay BETWEEN {min_delay} AND 7200 "
-    f"AND timestamp BETWEEN '{start_date}' AND '{end_date}' "
     "GROUP BY gtfs_trip_id"
 )
     return query
@@ -79,6 +80,15 @@ with tab1:
                 columns = ["gtfs_trip_id", "vehicle_id", "route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
                 rm = RequestManager()
                 df = rm.server_request(query, columns=columns)
+                
+
+                #work around
+                df['first_timestamp'] = pd.to_datetime(df['first_timestamp'])
+                start_date = pd.to_datetime(start_date)
+                end_date = pd.to_datetime(end_date)
+                start_datetime = datetime.combine(start_date.date(), time.min)
+                end_datetime = datetime.combine(end_date.date(), time.max)
+                df = df[(df['first_timestamp'] >= start_datetime) & (df['first_timestamp'] <= end_datetime)]
 
                 if df is None:
                     st.error("Server request returned None!")
