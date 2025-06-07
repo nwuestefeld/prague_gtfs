@@ -43,7 +43,10 @@ class RequestManager:
             print("Error:", error)
             return None
         else:
-            df = pd.read_csv(StringIO(output), sep="|", header=None)
+            if not output.strip():
+                df = pd.DataFrame()
+            else:
+                df = pd.read_csv(StringIO(output), sep="|", header=None)
 
             if columns is not None:
                 if len(columns) == df.shape[1]:

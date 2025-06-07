@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 from managers.request_manager import RequestManager
 from managers.trip_manager import TripManager
-
+from managers.shape_manager import ShapeManager
+from shapely import wkt
 # Page setup
 st.set_page_config(
     page_title="Delay Dashboard",
@@ -24,11 +25,32 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Export Data"
 ])
 
+def make_query(start_date, end_date, min_delay, bbox):
+    minx, miny, maxx, maxy = bbox
+    return f"""
+        SELECT 
+            gtfs_trip_id, vehicle_id, route_type, gtfs_route_short_name, 
+            AVG(delay) AS mean_delay, MIN(timestamp) AS first_timestamp 
+        FROM vehicle_positions 
+        WHERE delay IS NOT NULL 
+          AND longitude BETWEEN {minx} AND {maxx} 
+          AND latitude BETWEEN {miny} AND {maxy} 
+          AND delay BETWEEN {min_delay} AND 7200
+          AND DATE(timestamp) >= DATE('{start_date}')
+          AND DATE(timestamp) <= DATE('{end_date}')
+        GROUP BY gtfs_trip_id
+    """
+
+
+
 # Connect to the SQLite database (default)
-conn = sqlite3.connect("vehicle_positions.db")
-query = """SELECT * FROM vehicle_positions WHERE delay IS NOT NULL AND delay > 60"""
-df = pd.read_sql_query(query, conn)
-conn.close()
+#conn = sqlite3.connect("vehicle_positions.db")
+##query = """SELECT * FROM vehicle_positions WHERE delay IS NOT NULL AND delay > 60"""
+#df = pd.read_sql_query(query, conn)
+#conn.close()
+df = pd.DataFrame()  # Initialize df as an empty DataFrame
+df1 = pd.DataFrame()  # Initialize df1 as an empty DataFrame
+
 
 # Tab 1: Delay Distribution
 with tab1:
@@ -55,41 +77,39 @@ with tab1:
         if start_date > end_date:
             st.error("Start date must be before end date.")
         else:
-            st.success(f"Filters applied: Vehicle Type: {vehicle_type}, Date Range: {start_date} to {end_date}")
-            query = "SELECT gtfs_trip_id, vehicle_id, route_type, gtfs_route_short_name, AVG(delay) AS mean_delay, MIN(timestamp) AS first_timestamp FROM vehicle_positions WHERE delay IS NOT NULL"
-            if min_delay > 0:
-                query += f" AND delay BETWEEN {min_delay} AND 7200"
-            # Hier kann noch Datum-Filter ergänzt werden
-            query += f" GROUP BY gtfs_trip_id "
-            
-            columns = ["gtfs_trip_id", "vehicle_id","route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
-            rm = RequestManager()
-            df = rm.server_request(query, columns=columns)
-            df1 = df.copy()
-            if vehicle_type != "All":
-                df1 = df1[df1['route_type'] == vehicle_type]
+            with st.spinner("Load Data from Server..."):
+                minx, miny, maxx, maxy = ShapeManager().set_bounding_box()
+                st.success(f"Filters applied: Date Range: {start_date} to {end_date}")
+                query = make_query(start_date, end_date, min_delay, (minx, miny, maxx, maxy))
+                st.write("Executing query:")
+                columns = ["gtfs_trip_id", "vehicle_id","route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
+                rm = RequestManager()
+                df = rm.server_request(query, columns=columns)
+                if vehicle_type != "All":
+                    df1 = df1[df1['route_type'] == vehicle_type]
 
-            # Speichere df1 in session_state
-            st.session_state["df1"] = df1
+                # Speichere df1 in session_state
+                st.session_state["df1"] = df1
 
-            # Anzeigen und Plots
-            if df is None:
-                st.error("Server request returned None!")
-            elif df.empty:
-                st.warning("No data available for the selected filter.")
-            else:
-                if not df1.empty:
-                    mean_delay_trip = df1.groupby('gtfs_trip_id')['delay'].mean().reset_index()
-                    unique_mean_delay = mean_delay_trip['delay'].nunique()
-                    st.success(f"{unique_mean_delay} Trips of vehicle type {vehicle_type} have a delay over {min_delay} seconds.")
-                    fig, ax = plt.subplots()
-                    ax.hist(df1['delay'], bins=20, edgecolor='black', color='skyblue')
-                    ax.set_title("Distribution of Delays")
-                    ax.set_xlabel("Delay (seconds)")
-                    ax.set_ylabel("Number of observations")
-                    st.pyplot(fig)
+                # Anzeigen und Plots
+                if df is None:
+                    st.error("Server request returned None!")
+                elif df.empty:
+                    st.warning("No data available for the selected filter.")
                 else:
-                    st.success(f"No delay data of vehicle type {vehicle_type} over {min_delay} seconds.")
+                    if not df1.empty:
+                        df1 = df.copy()
+                        mean_delay_trip = df1.groupby('gtfs_trip_id')['delay'].mean().reset_index()
+                        unique_mean_delay = mean_delay_trip['delay'].nunique()
+                        st.success(f"{unique_mean_delay} Trips of vehicle type {vehicle_type} have a delay over {min_delay} seconds.")
+                        fig, ax = plt.subplots()
+                        ax.hist(df1['delay'], bins=20, edgecolor='black', color='skyblue')
+                        ax.set_title("Distribution of Delays")
+                        ax.set_xlabel("Delay (seconds)")
+                        ax.set_ylabel("Number of observations")
+                        st.pyplot(fig)
+                    else:
+                        st.success(f"No delay data of vehicle type {vehicle_type} over {min_delay} seconds.")
 
             st.subheader("Delay Statistics")
             st.write("Mean and maximum delay grouped by vehicle type.")
