@@ -42,6 +42,8 @@ class StopManager:
             cursor = conn.cursor()
             for stop in stops:
                 props = stop["properties"]
+                if props.get("zone_id") != "P":
+                    continue # Skip stops not in zone P
                 coords = stop["geometry"]["coordinates"]
                 cursor.execute("""
                     INSERT OR REPLACE INTO stops (
