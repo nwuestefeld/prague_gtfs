@@ -1,6 +1,13 @@
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
+
+"""Connections page for configuring API and SSH settings to access GTFS data.
+
+This module provides a Streamlit page where users can enter their API key for static GTFS endpoints,
+upload a PEM file for SSH access to real-time vehicle position data, and test the connection.
+"""
 
 import streamlit as st
 import tempfile
@@ -8,6 +15,13 @@ import paramiko
 
 
 def settings_page():
+    """Render the Connections page for GTFS data configuration.
+
+    Displays controls for:
+    1. Entering or loading the API key (static GTFS).
+    2. Uploading a PEM key for SSH access (real-time data).
+    3. Testing the SSH connection.
+    """
     st.title("Connections Page")
     st.markdown("""
     **Connection Setup**  

@@ -1,4 +1,3 @@
-
 ### DO NOT RUN THIS FILE!!!!
 
 ### This file is for server use only!
@@ -71,6 +70,10 @@ def add_timestamp(data):
 
 #todo "gtfs_route_short_name"
 def create_table():
+    """Create the vehicle_positions table in the local SQLite database if it does not exist.
+
+    The table stores vehicle_id, trip IDs, route types, delays, coordinates, and timestamps.
+    """
     conn = sqlite3.connect('vehicle_positions.db')
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS vehicle_positions (
@@ -92,6 +95,14 @@ def create_table():
 
 
 def get_vehicle_positions():
+    """Fetch real-time vehicle position data from the Golemio API.
+
+    Returns:
+        dict or None: JSON response containing features if successful, otherwise None.
+
+    Raises:
+        requests.exceptions.RequestException: If the HTTP request fails.
+    """
     try:
         response = requests.get(API_URL, headers=headers)
         logger.info("Successfully fetched vehicle positions.")
@@ -102,7 +113,14 @@ def get_vehicle_positions():
 
 
 def store_vehicle_positions(data):
- 
+    """Store vehicle position features into the local SQLite database.
+
+    Args:
+        data (dict): JSON response with a 'features' list of vehicle position dicts.
+
+    Returns:
+        None
+    """
     if not data or "features" not in data:
         print("No data to store.")
         return
@@ -146,6 +164,10 @@ def store_vehicle_positions(data):
 
 
 def main():
+    """Continuously fetch and store vehicle position data at 30-second intervals.
+
+    Creates the database table if needed, then loops to fetch, store, and log data.
+    """
     create_table() 
 
     
@@ -161,4 +183,3 @@ def main():
 
 if __name__ == "__main__":
     main()   
-

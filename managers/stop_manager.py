@@ -2,12 +2,36 @@ import requests
 import sqlite3
 
 class StopManager:
+    """Manage GTFS stops: fetch from API, filter by zone P, and store in SQLite.
+
+    Attributes:
+        api_url (str): Base URL for the GTFS API.
+        db_path (str): Path to the local SQLite database file.
+        headers (dict): HTTP headers for authentication.
+    """
     def __init__(self, api_url, db_path, headers):
+        """Initialize the StopManager.
+
+        Args:
+            api_url (str): The GTFS API base URL.
+            db_path (str): SQLite database file path.
+            headers (dict): HTTP headers including the API key.
+        """
         self.api_url = api_url
         self.db_path = db_path
         self.headers = headers
 
     def get_stops(self):
+        """Fetch all stops from the API with pagination.
+
+        Retrieves up to 10,000 features per request until no more are returned.
+
+        Returns:
+            list: A list of stop feature dictionaries.
+
+        Raises:
+            Exception: If an HTTP request returns a non-200 status.
+        """
         all_features = []
         limit = 10000
         offset = 0
@@ -27,6 +51,13 @@ class StopManager:
         return all_features
 
     def create_stop_table(self):
+        """Create or replace the 'stops' table in the local SQLite database.
+
+        Drops the existing table and defines columns for stop metadata and coordinates.
+
+        Returns:
+            None
+        """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("DROP TABLE IF EXISTS stops")
@@ -48,6 +79,13 @@ class StopManager:
             # kein conn.close()
 
     def set_stops(self):
+        """Populate the stops table with API data filtered to zone P.
+
+        Fetches features, filters by 'zone_id' == 'P', and inserts them into the database.
+
+        Returns:
+            None
+        """
         self.create_stop_table()
         stops = self.get_stops()
         with sqlite3.connect(self.db_path) as conn:

@@ -5,8 +5,20 @@ from streamlit_folium import st_folium
 import sqlite3
 import pandas as pd
 
+"""
+Heatmap Page: visualize geospatial distribution of vehicle delays in Prague.
+
+This page displays an interactive heatmap of delays above a threshold,
+filtered by vehicle type and limited to zone P.
+"""
+
 @st.cache_data
 def load_stops():
+    """Load stop data from the static GTFS database.
+
+    Returns:
+        pandas.DataFrame: All stops with their coordinates and metadata.
+    """
     with sqlite3.connect("database.db", check_same_thread=False) as conn:
         df = pd.read_sql_query("SELECT * FROM stops", conn)
     conn.close()

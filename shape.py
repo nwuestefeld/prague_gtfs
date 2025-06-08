@@ -1,3 +1,9 @@
+"""
+shape.py: Extract tariff zone polygons from a PID shapefile and save as WKT.
+
+Reads 'DOP_PID_TARIFPASMA_P.shp' from a zip archive, filters for zone 'P',
+creates a unified polygon, and writes the result to 'tariff_zones.wkt'.
+"""
 import geopandas as gpd
 from shapely.ops import unary_union
 

@@ -5,6 +5,13 @@ import pandas as pd
 import sqlite3
 from managers.request_manager import RequestManager
 
+"""
+Stops Analytics Page: analyze and visualize delays of vehicles at individual stops in Prague.
+
+Users can view stops grouped by name, inspect current vehicle delays at each stop,
+and plot stop locations on a map to identify delay hotspots.
+"""
+
 # Page layout
 st.set_page_config(page_title="Stops Analytics", page_icon="🚏", layout="wide")
 st.title("Stops Analytics")
@@ -21,6 +28,14 @@ Use this page to explore delay patterns at individual stops in Prague (zone P).
 # --- Load data from database ---
 @st.cache_data
 def load_parent_stations():
+    """Load parent station groups with average coordinates.
+
+    Retrieves parent stations from the static stops database and computes
+    the average latitude and longitude for each group.
+
+    Returns:
+        pandas.DataFrame: Columns ['parent_id', 'parent_name', 'avg_lat', 'avg_lon'].
+    """
     conn = sqlite3.connect("database.db", check_same_thread=False)
     query = """
     SELECT
@@ -39,6 +54,11 @@ def load_parent_stations():
 
 @st.cache_data
 def load_stops_without_id():
+    """Fetch stop names where stop_id is missing in the static database.
+
+    Returns:
+        pandas.DataFrame: Single-column DataFrame of stop_name.
+    """
     conn = sqlite3.connect("database.db", check_same_thread=False)
     query = "SELECT stop_name FROM stops WHERE stop_id IS NULL;"
     df = pd.read_sql_query(query, conn)
@@ -47,6 +67,11 @@ def load_stops_without_id():
 
 @st.cache_data
 def load_stops_grouped_by_name():
+    """Load and group stops by name, computing average coordinates and count.
+
+    Returns:
+        pandas.DataFrame: Columns ['stop_name', 'avg_lat', 'avg_lon', 'stop_count'].
+    """
     conn = sqlite3.connect("database.db", check_same_thread=False)
     query = """
     SELECT
@@ -65,8 +90,13 @@ from folium.plugins import MarkerCluster
 import numpy as np
 
 def haversine(lat1, lon1, lat2, lon2):
-    """
-    calc dist
+    """Calculate great-circle distance between two points on Earth.
+
+    Args:
+        lat1, lon1, lat2, lon2 (float or array-like): Coordinates in decimal degrees.
+
+    Returns:
+        float or array-like: Distance in kilometers.
     """
     R = 6371  # radius in km
     phi1, phi2 = np.radians(lat1), np.radians(lat2)

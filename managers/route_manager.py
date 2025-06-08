@@ -1,12 +1,34 @@
 import requests
 import sqlite3
 class RouteManager:
+    """Manages GTFS route data: fetches from the API and loads into a local SQLite database.
+
+    Attributes:
+        api_url (str): Base URL of the GTFS API.
+        db_path (str): File path to the SQLite database.
+        headers (dict): HTTP headers containing the API authentication token.
+    """
     def __init__(self, api_url, db_path, headers):
+        """Initialize the RouteManager.
+
+        Args:
+            api_url (str): The base URL for GTFS API requests.
+            db_path (str): Path to the local SQLite database file.
+            headers (dict): HTTP headers for authentication.
+        """
         self.api_url = api_url
         self.db_path = db_path  
         self.headers = headers
 
     def get_routes(self):
+        """Fetch all routes from the GTFS API.
+
+        Returns:
+            list: A list of route dictionaries on success.
+
+        Raises:
+            Exception: If the HTTP response status is not 200.
+        """
         url = f"{self.api_url}/routes"
         response = requests.get(url, headers=self.headers)
         if response.status_code == 200:
@@ -15,6 +37,10 @@ class RouteManager:
             raise Exception(f"Error fetching routes: {response.status_code}")
 
     def create_route_table(self):
+        """Create the 'routes' table in the SQLite database if it does not already exist.
+
+        The table includes fields for route ID, names, type flags, colors, and last modification timestamp.
+        """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -38,6 +64,11 @@ class RouteManager:
             # dont close her for refresh
 
     def set_routes(self):
+        """Fetch route data and populate the local database.
+
+        Skips any routes with 'route_type' == 2 (trains) and inserts or replaces
+        remaining routes into the 'routes' table.
+        """
         self.create_route_table()
         routes = self.get_routes()
         with sqlite3.connect(self.db_path) as conn:
@@ -68,5 +99,3 @@ class RouteManager:
                     route.get("last_modify", "Unknown")
                 ))
             conn.commit()
-            
-
