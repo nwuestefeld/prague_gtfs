@@ -16,6 +16,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+st.markdown("""
+**Delay Dashboard Overview**  
+This page lets you explore delay patterns in Prague's public transport.
+
+You can:
+- **Delay Distribution**: View histogram of delays above a threshold.
+- **Delay Statistics**: See count, mean, and max delays by vehicle type.
+- **Top 10 Delays**: Identify trips with the highest single delays.
+- **Pie Chart**: Understand share of total delay per vehicle type.
+- **Predictions**: (coming soon) Forecast delays based on historical data.
+- **Export Data**: Download filtered delay data as CSV.
+""", unsafe_allow_html=True)
+
 # Create tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Delay Distribution", 

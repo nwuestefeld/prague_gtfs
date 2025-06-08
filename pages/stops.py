@@ -9,6 +9,14 @@ from managers.request_manager import RequestManager
 st.set_page_config(page_title="Stops Analytics", page_icon="🚏", layout="wide")
 st.title("Stops Analytics")
 st.write("Delays of vehicles at stops (state_position = 'at_stop').")
+st.markdown("""
+**Stop-Level Delay Analysis**  
+Use this page to explore delay patterns at individual stops in Prague (zone P).
+
+- **Stops grouped by stop_name**: displays all stops aggregated by name with location data.
+- **Vehicle Delays at Stops**: select a parent station to view current delays at each platform.
+- **Map of Delays**: plot stop locations on an interactive map to identify problem areas.
+""", unsafe_allow_html=True)
 
 # --- Load data from database ---
 @st.cache_data

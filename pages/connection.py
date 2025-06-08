@@ -9,20 +9,21 @@ import paramiko
 
 def settings_page():
     st.title("Connections Page")
+    st.markdown("""
+    **Connection Setup**  
+    Before you can fetch static or real-time GTFS data, you need:
 
-    st.markdown(
-        """
-        > **Note**  
-        To use this application, you need two things:
-        1. An API key from the server administrator to obtain the static GTFS data.
-        2. A PEM key to connect to the server for accessing real-time GTFS data.
+    1. **API Key** – provides access to the static GTFS endpoint.  
+    2. **PEM Key** – establishes SSH connection to the realtime vehicle-positions server.
 
-        > ⚠️ **Security Notice**  
-        Keep your PEM key **confidential**. Do not share it with unauthorized users.
+    - Toggle **Developer Mode** to load your API key from `.env`.  
+    - Upload your `.pem` file, then click **Connection Test** to verify connectivity.
 
-        If you need help or have questions, please contact your **system administrator**.
-        """
-    )
+    > **Security Notice**  
+    > Keep your PEM key **confidential**. Do not share it with unauthorized users.
+
+    For questions or assistance, contact your **system administrator**.
+    """, unsafe_allow_html=True)
 
     st.write("### Connection Settings")
     st.markdown("Please enter your API key to access the static GTFS data.")

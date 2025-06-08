@@ -4,24 +4,17 @@ import streamlit as st
 def main():
     st.title("Welcome to the GTFS App!")
     st.sidebar.info("Navigate using the sidebar.")
-    st.write("""
-        This Dashboard is designed to help you explore and analyze GTFS data from the Prague public transport system.
+    st.markdown("""
+    **Welcome to the Prague GTFS Dashboard!**  
+    This application allows you to explore both static and real-time GTFS data for the Prague public transport system.
 
-        You can:
-        - View trip delays in real-time
-        - Filter trips and apply various analysis parameters
-        - Visualize delays on a map
-        - Get insights on stops
-        - Export data for further analysis
+    **What you can do here:**
+    - **Refresh Data**: Update your local static GTFS database (routes, stops, trips).
+    - **Navigate**: Use the sidebar to switch between Dashboard, Map, Stops, and Connections pages.
+    - **Realtime Insights**: View up-to-date delay information for trams, metro, buses, trolleybuses, and funicular.
 
-        Use the sidebar to navigate through the different views and tools.  
-             
-        The realtime data is automatically updated from the server, ensuring you always have the latest information at your fingertips.
-        If you want to refresh the stationary data, click the "Refresh Data" button below.
-        
-             
-        For more information, please refer to the documentation or contact the Admins
-        """)
+    Make sure to set your API key and upload your PEM key on the **Connections** page before using realtime features.
+    """, unsafe_allow_html=True)
 
     if st.button("Refresh Data"):
         client = Client()

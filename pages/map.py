@@ -73,5 +73,14 @@ m.save("test_heatmap.html")
 
 st.title("Test Vehicle Heatmap Map")
 st.subheader("Vehicle Density Heatmap (Demo)")
+st.markdown("""
+**Spatial Delay Heatmap**  
+Visualize where delays are most severe in Prague (zone P only):
+
+- Select a vehicle type to focus on (tram, metro, bus, etc.).  
+- Heatmap intensity shows average delay at each location.  
+- Zoom and pan to explore hotspots across the city.  
+- Color scale runs from blue (lowest delays) to red (highest delays).  
+""", unsafe_allow_html=True)
 st.write("Please select a Vehicle Type")
 st_folium(m, width=700, height=500)
