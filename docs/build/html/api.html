@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>API Reference &#8212; Prague GTFS 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <script src="_static/documentation_options.js?v=01f34227"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Prague GTFS documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-client">
+<span id="api-reference"></span><h1>API Reference<a class="headerlink" href="#module-client" title="Link to this heading">¶</a></h1>
+<p>client.py: Defines the Client class to refresh local GTFS databases.</p>
+<p>The Client class loads API credentials from Streamlit session state,
+and orchestrates fetching static routes, stops, and trips data
+into a local SQLite database.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="client.Client">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">Client</span></span><a class="reference internal" href="_modules/client.html#Client"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.Client" title="Link to this definition">¶</a></dt>
+<dd><p>Orchestrates GTFS data refresh by calling individual managers.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>api_key (str): API key loaded from Streamlit session state.
+api_url (str): Base URL for GTFS API.
+headers (dict): HTTP headers for API requests.
+db_path (str): Local path to the SQLite database file.
+routemanager (RouteManager): Manager for GTFS routes.
+stopmanager (StopManager): Manager for GTFS stops.
+tripmanager (TripManager): Manager for GTFS trips.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="client.Client.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/client.html#Client.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#client.Client.run" title="Link to this definition">¶</a></dt>
+<dd><p>Run all data managers to refresh local GTFS tables.</p>
+<p>Calls set_routes, set_stops, and set_trips in order to
+update the SQLite database with the latest static GTFS data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-managers.route_manager">
+<dt class="sig sig-object py" id="managers.route_manager.RouteManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">managers.route_manager.</span></span><span class="sig-name descname"><span class="pre">RouteManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_url</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">headers</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/route_manager.html#RouteManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.route_manager.RouteManager" title="Link to this definition">¶</a></dt>
+<dd><p>Manages GTFS route data: fetches from the API and loads into a local SQLite database.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>api_url (str): Base URL of the GTFS API.
+db_path (str): File path to the SQLite database.
+headers (dict): HTTP headers containing the API authentication token.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.route_manager.RouteManager.create_route_table">
+<span class="sig-name descname"><span class="pre">create_route_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/route_manager.html#RouteManager.create_route_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.route_manager.RouteManager.create_route_table" title="Link to this definition">¶</a></dt>
+<dd><p>Create the ‘routes’ table in the SQLite database if it does not already exist.</p>
+<p>The table includes fields for route ID, names, type flags, colors, and last modification timestamp.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.route_manager.RouteManager.get_routes">
+<span class="sig-name descname"><span class="pre">get_routes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/route_manager.html#RouteManager.get_routes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.route_manager.RouteManager.get_routes" title="Link to this definition">¶</a></dt>
+<dd><p>Fetch all routes from the GTFS API.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>list: A list of route dictionaries on success.</p>
+</dd>
+<dt>Raises:</dt><dd><p>Exception: If the HTTP response status is not 200.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.route_manager.RouteManager.set_routes">
+<span class="sig-name descname"><span class="pre">set_routes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/route_manager.html#RouteManager.set_routes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.route_manager.RouteManager.set_routes" title="Link to this definition">¶</a></dt>
+<dd><p>Fetch route data and populate the local database.</p>
+<p>Skips any routes with ‘route_type’ == 2 (trains) and inserts or replaces
+remaining routes into the ‘routes’ table.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-managers.stop_manager">
+<dt class="sig sig-object py" id="managers.stop_manager.StopManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">managers.stop_manager.</span></span><span class="sig-name descname"><span class="pre">StopManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_url</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">headers</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/stop_manager.html#StopManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.stop_manager.StopManager" title="Link to this definition">¶</a></dt>
+<dd><p>Manage GTFS stops: fetch from API, filter by zone P, and store in SQLite.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>api_url (str): Base URL for the GTFS API.
+db_path (str): Path to the local SQLite database file.
+headers (dict): HTTP headers for authentication.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.stop_manager.StopManager.create_stop_table">
+<span class="sig-name descname"><span class="pre">create_stop_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/stop_manager.html#StopManager.create_stop_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.stop_manager.StopManager.create_stop_table" title="Link to this definition">¶</a></dt>
+<dd><p>Create or replace the ‘stops’ table in the local SQLite database.</p>
+<p>Drops the existing table and defines columns for stop metadata and coordinates.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.stop_manager.StopManager.get_stops">
+<span class="sig-name descname"><span class="pre">get_stops</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/stop_manager.html#StopManager.get_stops"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.stop_manager.StopManager.get_stops" title="Link to this definition">¶</a></dt>
+<dd><p>Fetch all stops from the API with pagination.</p>
+<p>Retrieves up to 10,000 features per request until no more are returned.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>list: A list of stop feature dictionaries.</p>
+</dd>
+<dt>Raises:</dt><dd><p>Exception: If an HTTP request returns a non-200 status.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.stop_manager.StopManager.set_stops">
+<span class="sig-name descname"><span class="pre">set_stops</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/stop_manager.html#StopManager.set_stops"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.stop_manager.StopManager.set_stops" title="Link to this definition">¶</a></dt>
+<dd><p>Populate the stops table with API data filtered to zone P.</p>
+<p>Fetches features, filters by ‘zone_id’ == ‘P’, and inserts them into the database.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-managers.trip_manager">
+<dt class="sig sig-object py" id="managers.trip_manager.TripManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">managers.trip_manager.</span></span><span class="sig-name descname"><span class="pre">TripManager</span></span><a class="reference internal" href="_modules/managers/trip_manager.html#TripManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.trip_manager.TripManager" title="Link to this definition">¶</a></dt>
+<dd><p>Manage GTFS trip data: initialize API settings and load trip information into a local SQLite database.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>api_key (str): The API key for GTFS requests.
+api_url (str): Base URL for the GTFS API.
+headers (dict): HTTP headers including the API key.
+db_path (str): Path to the local SQLite database file.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.trip_manager.TripManager.create_trip_table">
+<span class="sig-name descname"><span class="pre">create_trip_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/trip_manager.html#TripManager.create_trip_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.trip_manager.TripManager.create_trip_table" title="Link to this definition">¶</a></dt>
+<dd><p>Create the ‘trips’ table in the local SQLite database if it does not exist.</p>
+<p>The table stores information about trip IDs, route IDs, service IDs, headsigns,
+directions, block IDs, shape IDs, accessibility flags, bike flags, exceptions, and last modification.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.trip_manager.TripManager.get_infos_by_trip_id">
+<span class="sig-name descname"><span class="pre">get_infos_by_trip_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trip_ids</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/trip_manager.html#TripManager.get_infos_by_trip_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.trip_manager.TripManager.get_infos_by_trip_id" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve additional route information for a list of trip IDs.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>trip_ids (list[str]): List of trip IDs to look up.</p>
+</dd>
+<dt>Returns:</dt><dd><p>pandas.DataFrame: DataFrame containing trip_id, shape_id,
+route_short_name, route_long_name, and route_color.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.trip_manager.TripManager.get_trips">
+<span class="sig-name descname"><span class="pre">get_trips</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/trip_manager.html#TripManager.get_trips"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.trip_manager.TripManager.get_trips" title="Link to this definition">¶</a></dt>
+<dd><p>Fetch all trip records from the GTFS API.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>list: A list of trip dictionaries from the API.</p>
+</dd>
+<dt>Raises:</dt><dd><p>Exception: If the HTTP response status is not 200.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.trip_manager.TripManager.set_trips">
+<span class="sig-name descname"><span class="pre">set_trips</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/trip_manager.html#TripManager.set_trips"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.trip_manager.TripManager.set_trips" title="Link to this definition">¶</a></dt>
+<dd><p>Populate the local database with trip information from the GTFS API.</p>
+<p>Creates the trips table if needed, fetches trip data, and inserts or replaces
+each trip record in the SQLite database.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-managers.request_manager">
+<dt class="sig sig-object py" id="managers.request_manager.RequestManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">managers.request_manager.</span></span><span class="sig-name descname"><span class="pre">RequestManager</span></span><a class="reference internal" href="_modules/managers/request_manager.html#RequestManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.request_manager.RequestManager" title="Link to this definition">¶</a></dt>
+<dd><p>Manages SSH connection and SQL queries to the remote vehicle_positions database.</p>
+<p>This class loads environment variables, opens an SSH tunnel to the remote SQLite database,
+and provides methods to execute SQL queries and return results as pandas DataFrames.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.request_manager.RequestManager.connect">
+<span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/request_manager.html#RequestManager.connect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.request_manager.RequestManager.connect" title="Link to this definition">¶</a></dt>
+<dd><p>Establish an SSH connection to the remote database.</p>
+<p>Reads SSH_USER, SERVER_ADRESS, and PEM key path from environment/session state,
+then connects using Paramiko SSHClient.</p>
+<dl class="simple">
+<dt>Raises:</dt><dd><p>paramiko.SSHException: If SSH authentication or connection fails.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.request_manager.RequestManager.load_env">
+<span class="sig-name descname"><span class="pre">load_env</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/request_manager.html#RequestManager.load_env"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.request_manager.RequestManager.load_env" title="Link to this definition">¶</a></dt>
+<dd><p>Load environment variables from a .env file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="managers.request_manager.RequestManager.server_request">
+<span class="sig-name descname"><span class="pre">server_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sql_query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/managers/request_manager.html#RequestManager.server_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#managers.request_manager.RequestManager.server_request" title="Link to this definition">¶</a></dt>
+<dd><p>Execute a SQL query on the remote SQLite database via SSH.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>sql_query (str): The SQL query to run on the remote database.
+columns (list[str], optional): Column names for the returned DataFrame.</p>
+</dd>
+<dt>Returns:</dt><dd><p>pandas.DataFrame or None: A DataFrame with query results (empty if no data),
+or None if an error occurred.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p id="module-shape">shape.py: Extract tariff zone polygons from a PID shapefile and save as WKT.</p>
+<p>Reads ‘DOP_PID_TARIFPASMA_P.shp’ from a zip archive, filters for zone ‘P’,
+creates a unified polygon, and writes the result to ‘tariff_zones.wkt’.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="shape.main">
+<span class="sig-prename descclassname"><span class="pre">shape.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/shape.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#shape.main" title="Link to this definition">¶</a></dt>
+<dd><p>Extract tariff zone polygons from a PID shapefile and save as WKT.</p>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Prague GTFS</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#client.Client"><code class="docutils literal notranslate"><span class="pre">Client</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#managers.route_manager.RouteManager"><code class="docutils literal notranslate"><span class="pre">RouteManager</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#managers.stop_manager.StopManager"><code class="docutils literal notranslate"><span class="pre">StopManager</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#managers.trip_manager.TripManager"><code class="docutils literal notranslate"><span class="pre">TripManager</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#managers.request_manager.RequestManager"><code class="docutils literal notranslate"><span class="pre">RequestManager</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#shape.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Prague GTFS documentation</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Nils Wüstefeld, Adam Pasálek.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/api.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
