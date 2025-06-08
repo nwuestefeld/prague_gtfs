@@ -9,3 +9,4 @@ openstacksdk
 paramiko
 plotly
 shapely
+geopandas

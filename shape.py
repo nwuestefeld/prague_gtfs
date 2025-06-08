@@ -15,9 +15,10 @@ gdf = gdf.to_crs(epsg=4326)
 print(gdf['POPIS'].unique())
 print(gdf.crs)
 #zones of interest: See: https://pid.cz/en/tickets-and-fare/tariff-zones/
-#we pick only the city of Prague: P is city, 0 is transfer through city, B is to city
-zones_of_interest = ['P, 0, B']
-filtered_zones = gdf[gdf['POPIS'].isin(zones_of_interest)]
+# Filter for city zone “P”
+filtered_zones = gdf[
+    gdf['POPIS'].str.contains(r'\bP\b', regex=True, na=False)
+]
 union_polygon = unary_union(filtered_zones.geometry)
 wkt_string = union_polygon.wkt
 print(wkt_string)

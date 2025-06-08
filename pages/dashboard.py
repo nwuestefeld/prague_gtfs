@@ -36,6 +36,7 @@ def make_query(start_date, end_date, min_delay, bbox):
     "AVG(delay) AS delay, MIN(timestamp) AS first_timestamp "
     "FROM vehicle_positions "
     "WHERE delay IS NOT NULL "
+    "AND route_type <> 2 "
     f"AND longitude BETWEEN {minx} AND {maxx} "
     f"AND latitude BETWEEN {miny} AND {maxy} "
     f"AND delay BETWEEN {min_delay} AND 7200 "
@@ -57,7 +58,7 @@ with tab1:
         with col1:
             vehicle_type = st.selectbox(
                 "Select vehicle type",
-                ["All", "tram", "metro", "train", "bus"]
+                ["All", "tram", "metro", "bus"]
             )
         with col2:
             start_date = st.date_input("Select Start date")

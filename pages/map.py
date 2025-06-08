@@ -14,11 +14,11 @@ def load_stops():
 
 
 conn = sqlite3.connect("vehicle_positions.db")
-query = """SELECT * FROM vehicle_positions WHERE delay IS NOT NULL AND delay > 180"""
+query = """SELECT * FROM vehicle_positions WHERE delay IS NOT NULL AND delay > 180 AND route_type <> 2"""
 
 vehicle_type = st.selectbox(
     "Choose vehicle type",
-    ["All", "tram", "metro","train","bus"]
+    ["All", "tram", "metro", "bus"]
 )
 
 df = pd.read_sql_query(query, conn)

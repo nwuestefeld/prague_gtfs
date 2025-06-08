@@ -43,6 +43,8 @@ class RouteManager:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             for route in routes:
+                if route.get("route_type") == 2:
+                    continue
                 cursor.execute("""
                     INSERT OR REPLACE INTO routes (
                         route_id, agency_id, route_short_name, route_long_name,

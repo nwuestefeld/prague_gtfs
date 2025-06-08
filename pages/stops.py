@@ -117,6 +117,7 @@ if st.button("Load delays"):
       longitude
     FROM vehicle_positions
     WHERE state_position = 'at_stop'
+      AND route_type <> 2
     ORDER BY delay DESC
     LIMIT 100;
     """
