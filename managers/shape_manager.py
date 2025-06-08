@@ -1,12 +1,15 @@
 import requests
 import sqlite3
-
+import shapely.wkt as wkt
 class ShapeManager:
-    def __init__(self, api_url, db_path, headers):
-        self.api_url = api_url
-        self.db_path = db_path  # Path to the db
-        self.headers = headers
+    def __init__(self):
+        self.wtk = "tariff_zones.wkt"
+       # self.api_url = api_url
+        #self.db_path = db_path  # Path to the db
+        #self.headers = headers
 
+
+    # not implemented yet
     def create_shape_table(self):
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -30,3 +33,11 @@ class ShapeManager:
             return response.json()
         else:
             raise Exception(f"Error fetching shapes: {response.status_code}")
+        
+
+    def set_bounding_box(self):
+        with open(self.wtk, "r") as f:
+            wkt_polygon = f.read().strip()
+        polygon_geom = wkt.loads(wkt_polygon)
+        minx, miny, maxx, maxy = polygon_geom.bounds
+        return minx, miny, maxx, maxy

@@ -8,7 +8,8 @@ from managers.trip_manager import TripManager
 class Client:
     def __init__(self):
         load_dotenv()
-        self.api_key = os.getenv("API_KEY")
+        self.api_key = st.session_state["api_key"]
+        #self.api_key = os.getenv("API_KEY")
         self.api_url = os.getenv("API_URL")
         self.headers = {"X-Access-Token": self.api_key}
         self.db_path = "database.db"
