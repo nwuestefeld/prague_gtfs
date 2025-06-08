@@ -8,16 +8,28 @@ class StopManager:
         self.headers = headers
 
     def get_stops(self):
-        url = f"{self.api_url}/stops"
-        response = requests.get(url, headers=self.headers)
-        if response.status_code == 200:
-            return response.json()["features"]
-        else:
-            raise Exception(f"Error fetching stops: {response.status_code}")      
+        all_features = []
+        limit = 10000
+        offset = 0
+
+        while True:
+            url = f"{self.api_url}/stops?limit={limit}&offset={offset}"
+            response = requests.get(url, headers=self.headers)
+            if response.status_code != 200:
+                raise Exception(f"Error fetching stops: {response.status_code}")
+            data = response.json()
+            features = data.get("features", [])
+            if not features:
+                break
+            all_features.extend(features)
+            offset += limit
+
+        return all_features
 
     def create_stop_table(self):
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            cursor.execute("DROP TABLE IF EXISTS stops")
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS stops (
                     stop_id TEXT PRIMARY KEY,
