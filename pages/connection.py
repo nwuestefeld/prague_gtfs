@@ -1,8 +1,10 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 import streamlit as st
 import tempfile
 import paramiko
-import os
-from dotenv import load_dotenv
 
 
 def settings_page():
@@ -45,14 +47,13 @@ def settings_page():
 
     st.write("### PEM Key Upload")
     hostname = os.getenv("SERVER_ADRESS")
-    username = os.getenv("USER")
+    username = os.getenv("SSH_USER")
 
     st.write(f"🌐 **Host:** `Python Server Nils`")
     st.write(f"👤 **User:** `{username}`")
     st.markdown("Upload your PEM key below:")
 
     uploaded_file = st.file_uploader("Upload `.pem` file", type=["pem"])
-    load_dotenv()
 
     if uploaded_file is not None:
         key_data = uploaded_file.read()
@@ -69,6 +70,7 @@ def settings_page():
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pem") as temp_key_file:
                 temp_key_file.write(key_data)
                 temp_key_file_path = temp_key_file.name
+            os.chmod(temp_key_file_path, 0o400)
 
             st.session_state["pem_key_content"] = pem_content
             st.session_state["pem_key_path"] = temp_key_file_path

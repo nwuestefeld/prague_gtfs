@@ -8,3 +8,4 @@ matplotlib
 openstacksdk
 paramiko
 plotly
+shapely
