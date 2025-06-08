@@ -21,7 +21,7 @@ class RequestManager:
 
     def connect(self):
         self.hostname = os.getenv("SERVER_ADRESS")
-        self.username = os.getenv("USER")
+        self.username = os.getenv("SSH_USER")
         #self.key_path = "C:\\Users\\nilsw\\Documents\\prague_gtfs\\private_key_server.pem"
         #self.key = paramiko.RSAKey.from_private_key_file(self.key_path)
         self.key_path = st.session_state["pem_key_path"]
