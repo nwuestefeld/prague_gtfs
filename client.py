@@ -18,7 +18,7 @@ class Client:
         self.db_path = "database.db"
 
         self.routemanager = RouteManager(self.api_url, self.db_path, self.headers)
-        self.stopmanager = StopManager(self.api_url, self.db_path, self.headers)
+        self.stopmanager = StopManager()
         self.tripmanager = TripManager()
 
     def run(self):
