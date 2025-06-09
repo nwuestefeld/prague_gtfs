@@ -6,6 +6,7 @@ from scipy.spatial import cKDTree
 import numpy as np
 
 class StopManager:
+
     def __init__(self):
         self.api_url = st.session_state["API_URL"]
         self.db_path = "database.db"
@@ -34,6 +35,13 @@ class StopManager:
         return all_features
 
     def create_stop_table(self):
+        """Create or replace the 'stops' table in the local SQLite database.
+
+        Drops the existing table and defines columns for stop metadata and coordinates.
+
+        Returns:
+            None
+        """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("DROP TABLE IF EXISTS stops")
@@ -55,6 +63,13 @@ class StopManager:
             # kein conn.close()
 
     def set_stops(self):
+        """Populate the stops table with API data filtered to zone P.
+
+        Fetches features, filters by 'zone_id' == 'P', and inserts them into the database.
+
+        Returns:
+            None
+        """
         self.create_stop_table()
         stops = self.get_all_stops()
         with sqlite3.connect(self.db_path) as conn:

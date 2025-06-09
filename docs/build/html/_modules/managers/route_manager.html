@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>managers.route_manager &#8212; Prague GTFS 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <script src="../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for managers.route_manager</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span>
+<div class="viewcode-block" id="RouteManager">
+<a class="viewcode-back" href="../../api.html#managers.route_manager.RouteManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RouteManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages GTFS route data: fetches from the API and loads into a local SQLite database.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        api_url (str): Base URL of the GTFS API.</span>
+<span class="sd">        db_path (str): File path to the SQLite database.</span>
+<span class="sd">        headers (dict): HTTP headers containing the API authentication token.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_url</span><span class="p">,</span> <span class="n">db_path</span><span class="p">,</span> <span class="n">headers</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the RouteManager.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            api_url (str): The base URL for GTFS API requests.</span>
+<span class="sd">            db_path (str): Path to the local SQLite database file.</span>
+<span class="sd">            headers (dict): HTTP headers for authentication.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_url</span> <span class="o">=</span> <span class="n">api_url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db_path</span> <span class="o">=</span> <span class="n">db_path</span>  
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="n">headers</span>
+
+<div class="viewcode-block" id="RouteManager.get_routes">
+<a class="viewcode-back" href="../../api.html#managers.route_manager.RouteManager.get_routes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_routes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fetch all routes from the GTFS API.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list: A list of route dictionaries on success.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: If the HTTP response status is not 200.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">api_url</span><span class="si">}</span><span class="s2">/routes&quot;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching routes: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RouteManager.create_route_table">
+<a class="viewcode-back" href="../../api.html#managers.route_manager.RouteManager.create_route_table">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_route_table</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create the &#39;routes&#39; table in the SQLite database if it does not already exist.</span>
+
+<span class="sd">        The table includes fields for route ID, names, type flags, colors, and last modification timestamp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+            <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                CREATE TABLE IF NOT EXISTS routes (</span>
+<span class="s2">                    route_id TEXT PRIMARY KEY,</span>
+<span class="s2">                    agency_id TEXT,</span>
+<span class="s2">                    route_short_name TEXT,</span>
+<span class="s2">                    route_long_name TEXT,</span>
+<span class="s2">                    route_desc TEXT,</span>
+<span class="s2">                    route_type INTEGER,</span>
+<span class="s2">                    is_night BOOLEAN,</span>
+<span class="s2">                    is_regional BOOLEAN,</span>
+<span class="s2">                    is_substitute_transport BOOLEAN,</span>
+<span class="s2">                    route_color TEXT,</span>
+<span class="s2">                    route_text_color TEXT,</span>
+<span class="s2">                    route_url TEXT,</span>
+<span class="s2">                    last_modify TEXT</span>
+<span class="s2">                )</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span></div>
+
+            <span class="c1"># dont close her for refresh</span>
+
+<div class="viewcode-block" id="RouteManager.set_routes">
+<a class="viewcode-back" href="../../api.html#managers.route_manager.RouteManager.set_routes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_routes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fetch route data and populate the local database.</span>
+
+<span class="sd">        Skips any routes with &#39;route_type&#39; == 2 (trains) and inserts or replaces</span>
+<span class="sd">        remaining routes into the &#39;routes&#39; table.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_route_table</span><span class="p">()</span>
+        <span class="n">routes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_routes</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">route</span> <span class="ow">in</span> <span class="n">routes</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                    INSERT OR REPLACE INTO routes (</span>
+<span class="s2">                        route_id, agency_id, route_short_name, route_long_name,</span>
+<span class="s2">                        route_desc, route_type, is_night, is_regional, </span>
+<span class="s2">                        is_substitute_transport, route_color, route_text_color, </span>
+<span class="s2">                        route_url, last_modify</span>
+<span class="s2">                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="s2">                &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">(</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_id&quot;</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agency_id&quot;</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_short_name&quot;</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_long_name&quot;</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_desc&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_type&quot;</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_night&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_regional&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_substitute_transport&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_color&quot;</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_text_color&quot;</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_url&quot;</span><span class="p">),</span>
+                    <span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;last_modify&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">)</span>
+                <span class="p">))</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Prague GTFS</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Nils Wüstefeld, Adam Pasálek.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

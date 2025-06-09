@@ -8,6 +8,18 @@ from managers.shape_manager import ShapeManager
 from shapely import wkt
 from datetime import datetime, time
 
+"""
+Delay Dashboard page: interactive tools to analyze and visualize public transport delays in Prague.
+
+Provides multiple tabs for:
+- Delay distribution histograms.
+- Delay statistics tables.
+- Top delay listings.
+- Pie charts of delay share.
+- Placeholder for predictions.
+- CSV export of filtered data.
+"""
+
 # Page setup
 st.set_page_config(
     page_title="Delay Dashboard",
@@ -40,6 +52,17 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 ])
 
 def make_query(start_date, end_date, min_delay, bbox):
+    """Build a SQL query to fetch average delays per trip with filters.
+
+    Args:
+        start_date (date): Start of the date range for filtering.
+        end_date (date): End of the date range for filtering.
+        min_delay (int): Minimum delay threshold in seconds.
+        bbox (tuple): Geographic bounding box as (minx, miny, maxx, maxy).
+
+    Returns:
+        str: The formatted SQL query string excluding trains.
+    """
     minx, miny, maxx, maxy = bbox
     
     #no idea why date filtering is not working. 

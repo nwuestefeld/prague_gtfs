@@ -1,7 +1,26 @@
+"""
+main.py: Entry point for the Streamlit GTFS application.
+
+Defines the main() function that renders the welcome page, description,
+and a button to refresh static GTFS data via the Client manager.
+"""
 from client import Client
 import streamlit as st
 
 def main():
+    """Render the GTFS App main page with navigation and data refresh.
+
+    Displays:
+        - The application title and sidebar navigation info.
+        - An introduction to functionality and usage.
+        - A 'Refresh Data' button to update static GTFS tables via Client.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
     st.title("Welcome to the GTFS App!")
     st.sidebar.info("Navigate using the sidebar.")
     st.markdown("""
