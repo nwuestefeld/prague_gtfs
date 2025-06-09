@@ -42,11 +42,15 @@ class RequestManager:
             paramiko.SSHException: If SSH authentication or connection fails.
         """
 
-        self.hostname = os.getenv("SERVER_ADRESS")
-        self.username = os.getenv("SSH_USER")
+        self.hostname = st.session_state["SERVER_ADDRESS"]
+        self.username = st.session_state["SSH_USER"]
+        print("Connecting to server:", self.hostname)
+        print("Using username:", self.username)
+
         #self.key_path = "C:\\Users\\nilsw\\Documents\\prague_gtfs\\private_key_server.pem"
         #self.key = paramiko.RSAKey.from_private_key_file(self.key_path)
         self.key_path = st.session_state["pem_key_path"]
+        print("Using key path:", self.key_path)
         self.remote_db_path ="vehicle_positions.db"
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
