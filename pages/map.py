@@ -81,7 +81,7 @@ m = folium.Map(
 
 HeatMap(heat_data).add_to(m)
 
-m.save("test_heatmap.html")
+#m.save("test_heatmap.html")
 
 st.title("Test Vehicle Heatmap Map")
 st.subheader("Vehicle Density Heatmap (Demo)")

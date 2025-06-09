@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
 
 """Connections page for configuring API and SSH settings to access GTFS data.
 
@@ -45,6 +44,7 @@ def settings_page():
     dev_mode = st.checkbox("Developer Mode", value=False)
 
     if dev_mode:
+        load_dotenv()
         st.info("Developer mode is enabled. Using API key and PEM key from environment variables. " \
         "(Please know what you are doing!)")
         st.session_state["api_key"] = os.getenv("API_KEY")
@@ -53,35 +53,42 @@ def settings_page():
         st.session_state["SERVER_ADDRESS"] = os.getenv("SERVER_ADDRESS")
         st.session_state["API_URL"] = os.getenv("API_URL")
     else:
-        st.info("Developer mode is disabled. Please enter your API key and upload PEM key.")
-        if "api_key" in st.session_state:
-            st.session_state["api_key"] = ""
-
-        # API-Key 
-        api_key_input = st.text_input("Enter your API key", type="password", value=st.session_state.get("api_key", ""))
-
-        if st.button("Save API Key"):
-            if api_key_input:
-                st.session_state["api_key"] = api_key_input
-                st.success("API key saved successfully.")
-            else:
-                st.error("Please enter a valid API key.")
-
-        if not st.session_state.get("api_key"):
-            st.warning("Please enter your API key to proceed.")
-
+        st.info("Developer mode is disabled. Please upload your .env file and upload PEM key.")
+    
         #TODO: Add .env file upload option
         st.write("### Environment Variables Upload")
-        
+
+        st.markdown("""
+        You can upload a `.env` file to set your environment variables.
+        This file should contain your API key and other necessary configurations.
+        """)
+        env_file = st.file_uploader("Upload `.env` file", type=["env"])
+        if env_file is not None:
+            try:
+                env_content = env_file.read().decode("utf-8")
+                with open(".env", "w") as f:
+                    f.write(env_content)
+                st.success("Environment variables loaded successfully.")
+            except Exception as e:
+                st.error(f"Failed to load environment variables: {e}")
+            if st.button("Apply Environment"):
+                st.info("Applying environment variables from `.env` file...")
+                load_dotenv()
+                st.write("API_KEY from os.getenv:", os.getenv("API_KEY"))
+                st.write("SSH_USER from os.getenv:", os.getenv("USER"))
+                st.write("SERVER_ADDRESS from os.getenv:", os.getenv("SERVER_ADDRESS"))
+                st.session_state["api_key"] = os.getenv("API_KEY")
+                #st.session_state["pem_key_path"] = "private_key_server.pem"
+                st.session_state["SSH_USER"] = os.getenv("USER")
+                st.session_state["SERVER_ADDRESS"] = os.getenv("SERVER_ADDRESS")
+                st.session_state["API_URL"] = os.getenv("API_URL")
 
 
-        # PEM-Key 
+        # PEM-Key
+  
         st.write("### PEM Key Upload")
-        hostname = os.getenv("SERVER_ADRESS")
-        username = os.getenv("SSH_USER")
-
         st.write(f"🌐 **Host:** `Python Server Nils`")
-        st.write(f"👤 **User:** `{username}`")
+        st.write(f"👤 **User:** `USER`")
         st.markdown("Upload your PEM key below:")
 
         uploaded_file = st.file_uploader("Upload `.pem` file", type=["pem"])
@@ -115,6 +122,11 @@ def settings_page():
                     key_path = st.session_state["pem_key_path"]
                     ssh = paramiko.SSHClient()
                     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                    hostname = st.session_state.get("SERVER_ADDRESS")
+                    username = st.session_state.get("SSH_USER")
+                    if not hostname or not username:
+                        st.error("Please set the server address and SSH user in the environment variables.")
+                        return
                     ssh.connect(hostname=hostname, username=username, key_filename=key_path)
                     st.success("Connection successful!")
                     ssh.close()

@@ -33,10 +33,11 @@ class Client:
         """
         load_dotenv()
         if "api_key" not in st.session_state:
-            raise RuntimeError("API key not set – please set it on the Connections page first.")
+            st.error("Keys are not set – please go to the 'Connections' page and upload it first.")
+            st.stop()
         self.api_key = st.session_state["api_key"]
         #self.api_key = os.getenv("API_KEY")
-        self.api_url = os.getenv("API_URL")
+        self.api_url = st.session_state["api_url"]
         self.headers = {"X-Access-Token": self.api_key}
         self.db_path = "database.db"
 

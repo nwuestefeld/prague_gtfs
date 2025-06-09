@@ -8,6 +8,10 @@ from managers.shape_manager import ShapeManager
 from shapely import wkt
 from datetime import datetime, time
 
+
+
+
+
 """
 Delay Dashboard page: interactive tools to analyze and visualize public transport delays in Prague.
 
@@ -20,13 +24,6 @@ Provides multiple tabs for:
 - CSV export of filtered data.
 """
 
-# Page setup
-st.set_page_config(
-    page_title="Delay Dashboard",
-    page_icon=" :bar_chart:",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 st.markdown("""
 **Delay Dashboard Overview**  
@@ -51,7 +48,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Export Data"
 ])
 
-def make_query(start_date, end_date, min_delay, bbox):
+def make_query(start_date, end_date, min_delay, bbox, start_datetime, end_datetime):
     """Build a SQL query to fetch average delays per trip with filters.
 
     Args:
@@ -73,6 +70,7 @@ def make_query(start_date, end_date, min_delay, bbox):
     "FROM vehicle_positions "
     "WHERE delay IS NOT NULL "
     "AND route_type <> 2 "
+    f"AND timestamp BETWEEN '{start_datetime}' AND '{end_datetime}' "
     f"AND longitude BETWEEN {minx} AND {maxx} "
     f"AND latitude BETWEEN {miny} AND {maxy} "
     f"AND delay BETWEEN {min_delay} AND 7200 "
@@ -90,28 +88,28 @@ with tab1:
 
     # Setup filter form
     with st.form("filter_form"):
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         with col1:
-            vehicle_type = st.selectbox(
-                "Select vehicle type",
-                ["All", "tram", "metro", "bus"]
-            )
-        with col2:
             start_date = st.date_input("Select Start date")
-        with col3:
+        with col2:
             end_date = st.date_input("Select End date")
-        with col4:
+        with col3:
             min_delay = st.number_input("Min delay: default is 60 Sec", min_value=0, max_value=3600, value=60)
         submitted = st.form_submit_button("Apply")
 
     if submitted:
         if start_date > end_date:
             st.error("Start date must be before end date.")
+        if start_date > datetime.now().date():
+            st.error("Start date cannot be in the future.")
         else:
             with st.spinner("Load Data from Server..."):
                 minx, miny, maxx, maxy = ShapeManager().set_bounding_box()
                 st.success(f"Filters applied: Date Range: {start_date} to {end_date}")
-                query = make_query(start_date, end_date, min_delay, (minx, miny, maxx, maxy))
+                query = make_query(start_date, end_date, min_delay, (minx, miny, maxx, maxy), 
+                                  datetime.combine(start_date, time.min), 
+                                  datetime.combine(end_date, time.max))
+                
                 st.write("Executing query:")
                 st.code(query)
                 columns = ["gtfs_trip_id", "vehicle_id", "route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
@@ -119,22 +117,12 @@ with tab1:
                 df = rm.server_request(query, columns=columns)
                 
 
-                #work around
-                df['first_timestamp'] = pd.to_datetime(df['first_timestamp'])
-                start_date = pd.to_datetime(start_date)
-                end_date = pd.to_datetime(end_date)
-                start_datetime = datetime.combine(start_date.date(), time.min)
-                end_datetime = datetime.combine(end_date.date(), time.max)
-                df = df[(df['first_timestamp'] >= start_datetime) & (df['first_timestamp'] <= end_datetime)]
-
                 if df is None:
                     st.error("Server request returned None!")
                 elif df.empty:
                     st.warning("No data available for the selected filter.")
                 else:
                     # Filter by vehicle type if needed
-                    if vehicle_type != "All":
-                        df = df[df['route_type'] == vehicle_type]
 
                     # Save filtered df to session state
                     st.session_state["df"] = df.copy()
@@ -142,7 +130,7 @@ with tab1:
                     if not df.empty:
                         mean_delay_trip = df.groupby('gtfs_trip_id')['delay'].mean().reset_index()
                         unique_mean_delay = mean_delay_trip['delay'].nunique()
-                        st.success(f"{unique_mean_delay} Trips of vehicle type {vehicle_type} have a delay over {min_delay} seconds.")
+                        st.success(f"{unique_mean_delay} Trips have a delay over {min_delay} seconds.")
 
                         fig, ax = plt.subplots()
                         ax.hist(df['delay'], bins=20, edgecolor='black', color='skyblue')
@@ -267,6 +255,11 @@ with tab3:
         extra_cols = TripManager().get_infos_by_trip_id(top_delay_list)
         extra_cols = extra_cols.rename(columns={'trip_id': 'gtfs_trip_id'})
         top_delays = top_delays.merge(extra_cols, on='gtfs_trip_id', how='left')
+        print(top_delays.columns)
+        top_delays['route_short_name'] = top_delays.apply(
+            lambda row: row['gtfs_trip_id'].split('_')[0] if pd.isna(row['route_short_name']) or row['route_short_name'] == '' else row['route_short_name'],
+        axis=1
+        )
         st.write("Top 10 Delays by Vehicle Type")
         st.dataframe(top_delays)
 
