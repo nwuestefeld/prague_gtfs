@@ -10,3 +10,5 @@ paramiko
 plotly
 shapely
 geopandas
+shapely
+scipy

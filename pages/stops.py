@@ -1,9 +1,14 @@
 import streamlit as st
 from streamlit_folium import folium_static
 import folium
+from folium.plugins import MarkerCluster
+import numpy as np
 import pandas as pd
 import sqlite3
 from managers.request_manager import RequestManager
+from managers.stop_manager import StopManager
+from managers.shape_manager import ShapeManager
+
 
 """
 Stops Analytics Page: analyze and visualize delays of vehicles at individual stops in Prague.
@@ -65,13 +70,17 @@ def load_stops_without_id():
     conn.close()
     return df
 
+
+#for map
 @st.cache_data
-def load_stops_grouped_by_name():
+
+def get_stops_grouped_by_name():
     """Load and group stops by name, computing average coordinates and count.
 
     Returns:
         pandas.DataFrame: Columns ['stop_name', 'avg_lat', 'avg_lon', 'stop_count'].
     """
+
     conn = sqlite3.connect("database.db", check_same_thread=False)
     query = """
     SELECT
@@ -86,8 +95,7 @@ def load_stops_grouped_by_name():
     df = pd.read_sql_query(query, conn)
     conn.close()
     return df
-from folium.plugins import MarkerCluster
-import numpy as np
+
 
 def haversine(lat1, lon1, lat2, lon2):
     """Calculate great-circle distance between two points on Earth.
@@ -111,7 +119,7 @@ def haversine(lat1, lon1, lat2, lon2):
 parents_df = load_parent_stations()
 
 st.subheader("Stops grouped by stop_name")
-stops_grouped_df = load_stops_grouped_by_name()
+stops_grouped_df = get_stops_grouped_by_name()
 #remove exits like
 #stops_grouped_df = stops_grouped_df[~stops_grouped_df["stop_name"].str.match(r"^E\d+$")]
 stops_grouped_df = stops_grouped_df[stops_grouped_df["stop_name"].notna()]
@@ -128,93 +136,85 @@ st.markdown("---")
 # --- Delays Section ---
 st.subheader("Vehicle Delays at Stops")
 
-parent_list = ["All"] + [
-    f"{row.parent_id} ({row.parent_name})" for row in parents_df.itertuples()
-]
-selected_parent = st.selectbox("Choose the parent stop", parent_list)
-
 st.markdown("""
 Please select a parent station group. After clicking the button, the current delays of vehicles
 at the stops in this group will be displayed.
 """)
 
-if st.button("Load delays"):
-    # Determine selected parent_id
-    parent_id = None if selected_parent == "All" else selected_parent.split(" ")[0]
+with st.form("filter_form"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            start_date = st.date_input("Select Start date")
+        with col2:
+            end_date = st.date_input("Select End date")
+        with col3:
+            min_delay = st.number_input("Min delay: default is 60 Sec, Default is 360 Sec", min_value=60, max_value=3600, value=360)
+        submitted = st.form_submit_button("Apply")
 
-    # Query remote DB
-    base_query = """
-    SELECT
-      vehicle_id,
-      gtfs_trip_id,
-      route_type,
-      gtfs_route_short_name,
-      delay,
-      timestamp,
-      latitude,
-      longitude
-    FROM vehicle_positions
-    WHERE state_position = 'at_stop'
-      AND route_type <> 2
-    ORDER BY delay DESC
-    LIMIT 100;
-    """
-    rm = RequestManager()
-    columns = [
-        "vehicle_id", "gtfs_trip_id", "route_type", "gtfs_route_short_name",
-        "delay", "timestamp", "latitude", "longitude"
-    ]
-    vp_df = rm.server_request(base_query, columns=columns)
-
-    if vp_df is None or vp_df.empty:
-        st.info("No data returned from remote vehicle_positions DB (or no delays).")
+if submitted:
+    # some checks.
+    if start_date > end_date:
+        st.error("Start date cannot be after end date.")
+    if  start_date > pd.Timestamp.now().date():
+        st.error("Start or End date cannot be in the future.")
     else:
-        # Nearest parent assignment
-        def assign_nearest_parent(vp_df, parents_df):
-            import numpy as np
-            lat0 = vp_df["latitude"].to_numpy()
-            lon0 = vp_df["longitude"].to_numpy()
-            parent_lats = parents_df["avg_lat"].to_numpy()
-            parent_lons = parents_df["avg_lon"].to_numpy()
-            parent_ids = parents_df["parent_id"].to_numpy()
-            parent_names = parents_df["parent_name"].to_numpy()
+        #TODO ensure that no double entries when vehicle is at stop for multiple timestamps
+        # that means same trip_id and roungly same  lat and long ->unique trip id and stop combi
+        start_date_str = start_date.strftime('%Y-%m-%d') + " 00:00:00"
+        end_date_str = end_date.strftime('%Y-%m-%d') + " 23:59:00"
+        st.success(f"Selected date range: {start_date_str} to {end_date_str}")
+        minx, miny, maxx, maxy = ShapeManager().set_bounding_box()
+        base_query = f"""
+        SELECT
+        vehicle_id,
+        gtfs_trip_id,
+        route_type,
+        gtfs_route_short_name,
+        delay,
+        bearing,
+        timestamp,
+        latitude,
+        longitude
+        FROM vehicle_positions
+        WHERE state_position = 'at_stop'
+        AND longitude BETWEEN '{minx}' AND '{maxx}'
+        AND latitude BETWEEN '{miny}' AND '{maxy}'
+        AND route_type <> 2
+        AND delay > '{min_delay}'
+        AND timestamp BETWEEN '{start_date_str}' AND '{end_date_str}'
+        """
+        rm = RequestManager()
+        columns = [
+        "vehicle_id", "gtfs_trip_id", "route_type", "gtfs_route_short_name",
+        "delay", "bearing", "timestamp", "latitude", "longitude"
+        ]
+        with st.spinner("Loading data..."):
+            vp_df = rm.server_request(base_query, columns=columns)
+            print(vp_df.head())
+            if vp_df is None or vp_df.empty:
+                st.info("No data returned from remote vehicle_positions DB (or no delays). Please try a different date range or check the database.")
+                st.stop()
+            else:
+                st.success(f"Found vehicles on stops with delays greater than {min_delay} seconds.")
 
-            assigned_parent_id = []
-            assigned_parent_name = []
-            for y0, x0 in zip(lat0, lon0):
-                dlat = parent_lats - y0
-                dlon = parent_lons - x0
-                dist2 = dlat * dlat + dlon * dlon
-                idx = np.argmin(dist2)
-                assigned_parent_id.append(parent_ids[idx])
-                assigned_parent_name.append(parent_names[idx])
+            with st.spinner("Matching Stations with Database"):
+                # Match stations with lat and long from on stop vehicle positions
+                sm = StopManager()
+                stops_df = sm.get_stops()
+                if stops_df.empty:
+                    st.error("Please ensure that the stops table is populated in the database. You can do this by refreshing the database on the Connections page.")
+                    st.stop()
+                else:
+                    matched_stops = sm.match_nearest_stops(vp_df, stops_df, 100)
+                    st.dataframe(matched_stops.head(10), use_container_width=True)
 
-            result = vp_df.copy()
-            result["parent_id"] = assigned_parent_id
-            result["parent_name"] = assigned_parent_name
-            return result
 
-        vp_with_parents = assign_nearest_parent(vp_df, parents_df)
 
-        if parent_id:
-            vp_with_parents = vp_with_parents[vp_with_parents["parent_id"] == parent_id]
 
-        if vp_with_parents.empty:
-            st.info("No delays found for the selected parent station.")
-        else:
-            st.success(f"{len(vp_with_parents)} records found.")
-
-            # Delay Details
-            with st.expander("Delay Details"):
-                display_cols = [
-                    "vehicle_id", "gtfs_trip_id", "route_type", "gtfs_route_short_name",
-                    "delay", "timestamp", "latitude", "longitude", "parent_id", "parent_name"
-                ]
-                st.dataframe(vp_with_parents[display_cols])
 
     with st.expander("Map of Delays"):
         st.subheader("🗺️ Stop Locations on Map")
-        stops_grouped_df = load_stops_grouped_by_name()
+        stops_grouped_df = get_stops_grouped_by_name()
 
         if stops_grouped_df.empty:
             st.info("No stops found to plot.")
