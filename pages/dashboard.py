@@ -110,8 +110,8 @@ with tab1:
                                   datetime.combine(start_date, time.min), 
                                   datetime.combine(end_date, time.max))
                 
-                st.write("Executing query:")
-                st.code(query)
+                #st.write("Executing query:")
+                #st.code(query)
                 columns = ["gtfs_trip_id", "vehicle_id", "route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
                 rm = RequestManager()
                 df = rm.server_request(query, columns=columns)
@@ -131,9 +131,16 @@ with tab1:
                         mean_delay_trip = df.groupby('gtfs_trip_id')['delay'].mean().reset_index()
                         unique_mean_delay = mean_delay_trip['delay'].nunique()
                         st.success(f"{unique_mean_delay} Trips have a delay over {min_delay} seconds.")
-
+                        bins = [60, 180, 300, 600, 1800, 3600, float('inf')]  #
+                        bin_labels = ['1-3 min', '3-5 min', '5-10 min', '10-30 min', '30-60 min', '> 60 min']
+                        labels=bin_labels
                         fig, ax = plt.subplots()
-                        ax.hist(df['delay'], bins=20, edgecolor='black', color='skyblue')
+                        df['delay_binned'] = pd.cut(df['delay'], bins=bins, labels=bin_labels, right=False)  # 'right=False' für offene Intervalle rechts
+                        delay_counts = df['delay_binned'].value_counts().sort_index()
+
+                        ax.bar(delay_counts.index, delay_counts.values, edgecolor='black', color='skyblue')
+
+                        #ax.hist(df['delay'], bins=bins, edgecolor='black', color='skyblue')
                         ax.set_title("Distribution of Delays")
                         ax.set_xlabel("Delay (seconds)")
                         ax.set_ylabel("Number of observations")

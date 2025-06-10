@@ -74,9 +74,9 @@ def settings_page():
             if st.button("Apply Environment"):
                 st.info("Applying environment variables from `.env` file...")
                 load_dotenv()
-                st.write("API_KEY from os.getenv:", os.getenv("API_KEY"))
-                st.write("SSH_USER from os.getenv:", os.getenv("USER"))
-                st.write("SERVER_ADDRESS from os.getenv:", os.getenv("SERVER_ADDRESS"))
+                #st.write("API_KEY from os.getenv:", os.getenv("API_KEY"))
+                #st.write("SSH_USER from os.getenv:", os.getenv("USER"))
+                #st.write("SERVER_ADDRESS from os.getenv:", os.getenv("SERVER_ADDRESS"))
                 st.session_state["api_key"] = os.getenv("API_KEY")
                 #st.session_state["pem_key_path"] = "private_key_server.pem"
                 st.session_state["SSH_USER"] = os.getenv("USER")
@@ -87,8 +87,8 @@ def settings_page():
         # PEM-Key
   
         st.write("### PEM Key Upload")
-        st.write(f"🌐 **Host:** `Python Server Nils`")
-        st.write(f"👤 **User:** `USER`")
+        st.write(f"**Host:** `Python Server Nils`")
+        st.write(f" **User:** `USER`")
         st.markdown("Upload your PEM key below:")
 
         uploaded_file = st.file_uploader("Upload `.pem` file", type=["pem"])
@@ -100,19 +100,21 @@ def settings_page():
             except UnicodeDecodeError:
                 st.error("Failed to decode PEM file. Please upload a valid PEM file.")
                 st.stop()
-
-            st.text_area("PEM File Content:", pem_content, height=300)
+            
+            #optionally display the PEM content
+            if st.button("Show Pem content"):
+                st.text("PEM file content:")
+                st.text_area("PEM File Content:", pem_content, height=300)
             st.success("PEM file is ready to use.")
 
             if st.button("Use Key"):
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".pem") as temp_key_file:
                     temp_key_file.write(key_data)
                     temp_key_file_path = temp_key_file.name
-                os.chmod(temp_key_file_path, 0o400)
-
+                os.chmod(temp_key_file_path, 0o400) #read only
                 st.session_state["pem_key_content"] = pem_content
                 st.session_state["pem_key_path"] = temp_key_file_path
-                st.success(f".pem file saved temporarily at:\n`{temp_key_file_path}`")
+                #st.success(f".pem file saved temporarily at:\n`{temp_key_file_path}`")
 
         if st.button("Connection Test"):
             if "pem_key_path" not in st.session_state:
