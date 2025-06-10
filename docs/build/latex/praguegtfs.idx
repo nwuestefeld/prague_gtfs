@@ -1,0 +1,28 @@
+\indexentry{module@\spxentry{module}!client@\spxentry{client}|hyperpage}{3}
+\indexentry{client@\spxentry{client}!module@\spxentry{module}|hyperpage}{3}
+\indexentry{Client (class in client)@\spxentry{Client}\spxextra{class in client}|hyperpage}{3}
+\indexentry{run() (client.Client method)@\spxentry{run()}\spxextra{client.Client method}|hyperpage}{3}
+\indexentry{module@\spxentry{module}!managers.route\_manager@\spxentry{managers.route\_manager}|hyperpage}{3}
+\indexentry{managers.route\_manager@\spxentry{managers.route\_manager}!module@\spxentry{module}|hyperpage}{3}
+\indexentry{RouteManager (class in managers.route\_manager)@\spxentry{RouteManager}\spxextra{class in managers.route\_manager}|hyperpage}{3}
+\indexentry{create\_route\_table() (managers.route\_manager.RouteManager method)@\spxentry{create\_route\_table()}\spxextra{managers.route\_manager.RouteManager method}|hyperpage}{3}
+\indexentry{get\_routes() (managers.route\_manager.RouteManager method)@\spxentry{get\_routes()}\spxextra{managers.route\_manager.RouteManager method}|hyperpage}{3}
+\indexentry{set\_routes() (managers.route\_manager.RouteManager method)@\spxentry{set\_routes()}\spxextra{managers.route\_manager.RouteManager method}|hyperpage}{3}
+\indexentry{module@\spxentry{module}!managers.stop\_manager@\spxentry{managers.stop\_manager}|hyperpage}{3}
+\indexentry{managers.stop\_manager@\spxentry{managers.stop\_manager}!module@\spxentry{module}|hyperpage}{3}
+\indexentry{module@\spxentry{module}!managers.trip\_manager@\spxentry{managers.trip\_manager}|hyperpage}{3}
+\indexentry{managers.trip\_manager@\spxentry{managers.trip\_manager}!module@\spxentry{module}|hyperpage}{3}
+\indexentry{TripManager (class in managers.trip\_manager)@\spxentry{TripManager}\spxextra{class in managers.trip\_manager}|hyperpage}{3}
+\indexentry{create\_trip\_table() (managers.trip\_manager.TripManager method)@\spxentry{create\_trip\_table()}\spxextra{managers.trip\_manager.TripManager method}|hyperpage}{4}
+\indexentry{get\_infos\_by\_trip\_id() (managers.trip\_manager.TripManager method)@\spxentry{get\_infos\_by\_trip\_id()}\spxextra{managers.trip\_manager.TripManager method}|hyperpage}{4}
+\indexentry{get\_trips() (managers.trip\_manager.TripManager method)@\spxentry{get\_trips()}\spxextra{managers.trip\_manager.TripManager method}|hyperpage}{4}
+\indexentry{set\_trips() (managers.trip\_manager.TripManager method)@\spxentry{set\_trips()}\spxextra{managers.trip\_manager.TripManager method}|hyperpage}{4}
+\indexentry{module@\spxentry{module}!managers.request\_manager@\spxentry{managers.request\_manager}|hyperpage}{4}
+\indexentry{managers.request\_manager@\spxentry{managers.request\_manager}!module@\spxentry{module}|hyperpage}{4}
+\indexentry{RequestManager (class in managers.request\_manager)@\spxentry{RequestManager}\spxextra{class in managers.request\_manager}|hyperpage}{4}
+\indexentry{connect() (managers.request\_manager.RequestManager method)@\spxentry{connect()}\spxextra{managers.request\_manager.RequestManager method}|hyperpage}{4}
+\indexentry{load\_env() (managers.request\_manager.RequestManager method)@\spxentry{load\_env()}\spxextra{managers.request\_manager.RequestManager method}|hyperpage}{4}
+\indexentry{server\_request() (managers.request\_manager.RequestManager method)@\spxentry{server\_request()}\spxextra{managers.request\_manager.RequestManager method}|hyperpage}{4}
+\indexentry{module@\spxentry{module}!shape@\spxentry{shape}|hyperpage}{5}
+\indexentry{shape@\spxentry{shape}!module@\spxentry{module}|hyperpage}{5}
+\indexentry{main() (in module shape)@\spxentry{main()}\spxextra{in module shape}|hyperpage}{5}

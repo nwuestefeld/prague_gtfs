@@ -1,0 +1,70 @@
+\begin{sphinxtheindex}
+\let\bigletter\sphinxstyleindexlettergroup
+\let\spxpagem \sphinxstyleindexpagemain
+\let\spxentry \sphinxstyleindexentry
+\let\spxextra \sphinxstyleindexextra
+
+  \bigletter C
+  \item \spxentry{client}
+    \subitem \spxentry{module}, \hyperpage{3}
+  \item \spxentry{Client}\spxextra{class in client}, \hyperpage{3}
+  \item \spxentry{connect()}\spxextra{managers.request\_manager.RequestManager method}, 
+		\hyperpage{4}
+  \item \spxentry{create\_route\_table()}\spxextra{managers.route\_manager.RouteManager method}, 
+		\hyperpage{3}
+  \item \spxentry{create\_trip\_table()}\spxextra{managers.trip\_manager.TripManager method}, 
+		\hyperpage{4}
+
+  \indexspace
+  \bigletter G
+  \item \spxentry{get\_infos\_by\_trip\_id()}\spxextra{managers.trip\_manager.TripManager method}, 
+		\hyperpage{4}
+  \item \spxentry{get\_routes()}\spxextra{managers.route\_manager.RouteManager method}, 
+		\hyperpage{3}
+  \item \spxentry{get\_trips()}\spxextra{managers.trip\_manager.TripManager method}, \hyperpage{4}
+
+  \indexspace
+  \bigletter L
+  \item \spxentry{load\_env()}\spxextra{managers.request\_manager.RequestManager method}, 
+		\hyperpage{4}
+
+  \indexspace
+  \bigletter M
+  \item \spxentry{main()}\spxextra{in module shape}, \hyperpage{5}
+  \item \spxentry{managers.request\_manager}
+    \subitem \spxentry{module}, \hyperpage{4}
+  \item \spxentry{managers.route\_manager}
+    \subitem \spxentry{module}, \hyperpage{3}
+  \item \spxentry{managers.stop\_manager}
+    \subitem \spxentry{module}, \hyperpage{3}
+  \item \spxentry{managers.trip\_manager}
+    \subitem \spxentry{module}, \hyperpage{3}
+  \item \spxentry{module}
+    \subitem \spxentry{client}, \hyperpage{3}
+    \subitem \spxentry{managers.request\_manager}, \hyperpage{4}
+    \subitem \spxentry{managers.route\_manager}, \hyperpage{3}
+    \subitem \spxentry{managers.stop\_manager}, \hyperpage{3}
+    \subitem \spxentry{managers.trip\_manager}, \hyperpage{3}
+    \subitem \spxentry{shape}, \hyperpage{5}
+
+  \indexspace
+  \bigletter R
+  \item \spxentry{RequestManager}\spxextra{class in managers.request\_manager}, \hyperpage{4}
+  \item \spxentry{RouteManager}\spxextra{class in managers.route\_manager}, \hyperpage{3}
+  \item \spxentry{run()}\spxextra{client.Client method}, \hyperpage{3}
+
+  \indexspace
+  \bigletter S
+  \item \spxentry{server\_request()}\spxextra{managers.request\_manager.RequestManager method}, 
+		\hyperpage{4}
+  \item \spxentry{set\_routes()}\spxextra{managers.route\_manager.RouteManager method}, 
+		\hyperpage{3}
+  \item \spxentry{set\_trips()}\spxextra{managers.trip\_manager.TripManager method}, \hyperpage{4}
+  \item \spxentry{shape}
+    \subitem \spxentry{module}, \hyperpage{5}
+
+  \indexspace
+  \bigletter T
+  \item \spxentry{TripManager}\spxextra{class in managers.trip\_manager}, \hyperpage{3}
+
+\end{sphinxtheindex}
