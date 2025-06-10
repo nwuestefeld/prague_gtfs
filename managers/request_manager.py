@@ -41,7 +41,10 @@ class RequestManager:
         Raises:
             paramiko.SSHException: If SSH authentication or connection fails.
         """
-
+        if "SERVER_ADDRESS" not in st.session_state or "SSH_USER" not in st.session_state or "pem_key_path" not in st.session_state:
+            st.error("Please set the SERVER_ADDRESS, SSH_USER, and pem_key_path in the session state.")
+            print("Missing session state variables: SERVER_ADDRESS, SSH_USER, or pem_key_path")
+            return
         self.hostname = st.session_state["SERVER_ADDRESS"]
         self.username = st.session_state["SSH_USER"]
         print("Connecting to server:", self.hostname)
@@ -50,14 +53,17 @@ class RequestManager:
         #self.key_path = "C:\\Users\\nilsw\\Documents\\prague_gtfs\\private_key_server.pem"
         #self.key = paramiko.RSAKey.from_private_key_file(self.key_path)
         self.key_path = st.session_state["pem_key_path"]
-        print("Using key path:", self.key_path)
+        #print("Using key path:", self.key_path)
         self.remote_db_path ="vehicle_positions.db"
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh.connect(hostname=self.hostname, username=self.username, key_filename=self.key_path)
+        try:
+            self.ssh.connect(hostname=self.hostname, username=self.username, key_filename=self.key_path)
+        except paramiko.SSHException as e:
+            st.error("SSH connection failed. Please check your credentials and server address.")
+            print("SSH connection failed:", e)
+            return
 
-
-        
     def server_request(self, sql_query, columns=None):
         """Execute a SQL query on the remote SQLite database via SSH.
 
@@ -74,6 +80,9 @@ class RequestManager:
         safe_query = sql_query.replace("'", "'\"'\"'") #this line = 1 sleepless night
         #print("Executing SQL query on remote database:")
         #print(safe_query)
+        if self.remote_db_path is None or not self.remote_db_path:
+            st.error("Please input the setting files or check the connection.")
+            return None
         command = f"sqlite3 {self.remote_db_path} '{safe_query}'"
         stdin, stdout, stderr = self.ssh.exec_command(command)
         output = stdout.read().decode()
