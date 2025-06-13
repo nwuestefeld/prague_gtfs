@@ -48,7 +48,7 @@ def settings_page():
         st.info("Developer mode is enabled. Using API key and PEM key from environment variables. " \
         "(Please know what you are doing!)")
         st.session_state["api_key"] = os.getenv("API_KEY")
-        st.session_state["pem_key_path"] = "private_key_server.pem"
+        st.session_state["pem_key_path"] = os.getenv("KEY_PATH")
         st.session_state["SSH_USER"] = os.getenv("SSH_USER")
         st.session_state["SERVER_ADDRESS"] = os.getenv("SERVER_ADDRESS")
         st.session_state["API_URL"] = os.getenv("API_URL")
@@ -78,8 +78,8 @@ def settings_page():
                 #st.write("SSH_USER from os.getenv:", os.getenv("USER"))
                 #st.write("SERVER_ADDRESS from os.getenv:", os.getenv("SERVER_ADDRESS"))
                 st.session_state["api_key"] = os.getenv("API_KEY")
-                #st.session_state["pem_key_path"] = "private_key_server.pem"
-                st.session_state["SSH_USER"] = os.getenv("USER")
+                st.session_state["pem_key_path"] = os.getenv("KEY_PATH")
+                st.session_state["SSH_USER"] = os.getenv("SSH_USER")
                 st.session_state["SERVER_ADDRESS"] = os.getenv("SERVER_ADDRESS")
                 st.session_state["API_URL"] = os.getenv("API_URL")
 

@@ -35,7 +35,7 @@ class RequestManager:
 
         """Establish an SSH connection to the remote database.
 
-        Reads SSH_USER, SERVER_ADRESS, and PEM key path from environment/session state,
+        Reads SSH_USER, SERVER_ADDRESS, and PEM key path from environment/session state,
         then connects using Paramiko SSHClient.
 
         Raises:
@@ -77,7 +77,7 @@ class RequestManager:
 
         """
 
-        safe_query = sql_query.replace("'", "'\"'\"'") #this line = 1 sleepless night
+        safe_query = sql_query.replace("'", "'\"'\"'")
         #print("Executing SQL query on remote database:")
         #print(safe_query)
         if self.remote_db_path is None or not self.remote_db_path:
@@ -110,8 +110,8 @@ class RequestManager:
                     "gtfs_trip_id",
                     "route_type",
                     "gtfs_route_short_name",
-                    "delay",
                     "bearing",
+                    "delay",
                     "latitude",
                     "longitude",
                     "state_position",
