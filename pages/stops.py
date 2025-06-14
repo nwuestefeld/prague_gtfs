@@ -5,9 +5,20 @@ from folium.plugins import MarkerCluster
 import numpy as np
 import pandas as pd
 import sqlite3
+
 from managers.request_manager import RequestManager
 from managers.stop_manager import StopManager
 from managers.shape_manager import ShapeManager
+from managers.trip_manager import TripManager
+
+# Load environment variables for API access
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+api_url = os.getenv("API_URL")
+db_path = "database.db"
+headers = {"X-Access-Token": os.getenv("API_KEY")}
 
 
 """
@@ -129,116 +140,138 @@ if stops_grouped_df.empty:
 else:
     st.dataframe(stops_grouped_df)
 
+# --- Map: All stops in zone P ---------------------------------------------
+st.markdown("### 🗺️ Map of All Stops Prague")
+station_options = ["ALL STATIONS"] + sorted(stops_grouped_df["stop_name"].unique())
+station_choice = st.selectbox("Select a Station to View Individual Platforms", station_options)
+
+if station_choice == "ALL STATIONS":
+    with st.spinner("Rendering map…"):
+        center_lat = stops_grouped_df["avg_lat"].mean()
+        center_lon = stops_grouped_df["avg_lon"].mean()
+
+        base_map = folium.Map(location=[center_lat, center_lon], zoom_start=12)
+        cluster = MarkerCluster().add_to(base_map)
+
+        # complete list of individual platforms for popup details
+        all_stops = sqlite3.connect("database.db", check_same_thread=False) \
+                         .cursor() \
+                         .execute(
+                            "SELECT stop_name, stop_id, latitude, longitude "
+                            "FROM stops WHERE latitude IS NOT NULL AND longitude IS NOT NULL"
+                         ).fetchall()
+
+        from collections import defaultdict
+        platform_dict = defaultdict(list)
+        for name, sid, lat, lon in all_stops:
+            platform_dict[name].append(sid)
+
+        for row in stops_grouped_df.itertuples():
+            popup_html = (
+                f"<b>{row.stop_name}</b><br/>"
+                f"Number of platforms: {len(platform_dict[row.stop_name])}"
+            )
+            folium.Marker(
+                location=[row.avg_lat, row.avg_lon],
+                popup=popup_html,
+                icon=folium.Icon(color='green', icon='info-sign')
+            ).add_to(cluster)
+
+        folium_static(base_map, width=700, height=450)
+else:
+    # Individual station view
+    selected_name = station_choice
+    # fetch individual platform coordinates
+    platform_rows = [
+        (sid, code, lat, lon) for name, sid, code, lat, lon in sqlite3.connect("database.db", check_same_thread=False)
+                            .cursor()
+                            .execute(
+                                "SELECT stop_name, stop_id, platform_code, latitude, longitude "
+                                "FROM stops WHERE latitude IS NOT NULL AND longitude IS NOT NULL"
+                            ).fetchall()
+        if name == selected_name and code
+    ]
+    if platform_rows:
+        # center on first platform
+        _, _, lat0, lon0 = platform_rows[0]
+        base_map = folium.Map(location=[lat0, lon0], zoom_start=16)
+        for sid, code, lat, lon in platform_rows:
+            popup_html = (
+                f"<b>{selected_name}</b><br/>"
+                f"Platform {code}"
+            )
+            folium.Marker(
+                location=[lat, lon],
+                popup=popup_html,
+                icon=folium.Icon(color='blue', icon='info-sign')
+            ).add_to(base_map)
+        folium_static(base_map, width=700, height=450)
+    else:
+        st.info(f"No platform data available for {selected_name}.")
+
 st.markdown("---")
 
-# --- Delays Section ---
-st.subheader("Vehicle Delays at Stops")
+# --- Dwell Time Analysis ---
+st.subheader("Dwell Time at Stops")
+st.markdown(
+    """
+    Select a date range and minimum dwell time (in seconds) to find vehicles that
+    stayed at stops for at least that duration.
+    """
+)
 
-st.markdown("""
-Please select a parent station group. After clicking the button, the current delays of vehicles
-at the stops in this group will be displayed.
-""")
-
-with st.form("filter_form"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            start_date = st.date_input("Select Start date")
-        with col2:
-            end_date = st.date_input("Select End date")
-        with col3:
-            min_delay = st.number_input("Min delay: default is 60 Sec, Default is 360 Sec", min_value=60, max_value=3600, value=360)
-        submitted = st.form_submit_button("Apply")
+with st.form("dwell_form"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        start_date = st.date_input("Start date")
+    with col2:
+        end_date = st.date_input("End date")
+    with col3:
+        min_dwell = st.number_input(
+            "Min dwell (sec)", min_value=30, max_value=3600, value=30
+        )
+    submitted = st.form_submit_button("Run")
 
 if submitted:
-    # some checks.
     if start_date > end_date:
         st.error("Start date cannot be after end date.")
-    if  start_date > pd.Timestamp.now().date():
-        st.error("Start or End date cannot be in the future.")
+    elif end_date > pd.Timestamp.now().date():
+        st.error("End date cannot be in the future.")
     else:
-        #TODO ensure that no double entries when vehicle is at stop for multiple timestamps
-        # that means same trip_id and roungly same  lat and long ->unique trip id and stop combi
-        start_date_str = start_date.strftime('%Y-%m-%d') + " 00:00:00"
-        end_date_str = end_date.strftime('%Y-%m-%d') + " 23:59:00"
-        st.success(f"Selected date range: {start_date_str} to {end_date_str}")
-        minx, miny, maxx, maxy = ShapeManager().set_bounding_box()
-        base_query = f"""
+        sd = start_date.strftime("%Y-%m-%d 00:00:00")
+        ed = end_date.strftime("%Y-%m-%d 23:59:59")
+        query = f"""
         SELECT
-        vehicle_id,
-        gtfs_trip_id,
-        route_type,
-        gtfs_route_short_name,
-        delay,
-        bearing,
-        timestamp,
-        latitude,
-        longitude
+          vehicle_id,
+          gtfs_trip_id,
+          MIN(timestamp) AS arrival,
+          MAX(timestamp) AS departure,
+          ROUND(
+              strftime('%s', MAX(timestamp)) - strftime('%s', MIN(timestamp)),
+              1
+          ) AS dwell_seconds
         FROM vehicle_positions
         WHERE state_position = 'at_stop'
-        AND longitude BETWEEN '{minx}' AND '{maxx}'
-        AND latitude BETWEEN '{miny}' AND '{maxy}'
-        AND route_type <> 2
-        AND delay > '{min_delay}'
-        AND timestamp BETWEEN '{start_date_str}' AND '{end_date_str}'
+          AND timestamp BETWEEN '{sd}' AND '{ed}'
+        GROUP BY vehicle_id, gtfs_trip_id
+        HAVING dwell_seconds >= {min_dwell}
+        ORDER BY dwell_seconds DESC;
         """
         rm = RequestManager()
-        columns = [
-        "vehicle_id", "gtfs_trip_id", "route_type", "gtfs_route_short_name",
-        "delay", "bearing", "timestamp", "latitude", "longitude"
-        ]
-        with st.spinner("Loading data..."):
-            vp_df = rm.server_request(base_query, columns=columns)
-            print(vp_df.head())
-            if vp_df is None or vp_df.empty:
-                st.info("No data returned from remote vehicle_positions DB (or no delays). Please try a different date range or check the database.")
-                st.stop()
-            else:
-                st.success(f"Found vehicles on stops with delays greater than {min_delay} seconds.")
+        cols = ["vehicle_id", "gtfs_trip_id", "arrival", "departure", "dwell_seconds"]
+        df_dwell = rm.server_request(query, columns=cols)
 
-            with st.spinner("Matching Stations with Database"):
-                # Match stations with lat and long from on stop vehicle positions
-                sm = StopManager()
-                stops_df = sm.get_stops()
-                if stops_df.empty:
-                    st.error("Please ensure that the stops table is populated in the database. You can do this by refreshing the database on the Connections page.")
-                    st.stop()
-                else:
-                    matched_stops = sm.match_nearest_stops(vp_df, stops_df, 100)
-                    st.dataframe(matched_stops.head(10), use_container_width=True)
-
-
-
-
-
-    with st.expander("Map of Delays"):
-        st.subheader("🗺️ Stop Locations on Map")
-        stops_grouped_df = get_stops_grouped_by_name()
-
-        if stops_grouped_df.empty:
-            st.info("No stops found to plot.")
+        if df_dwell is None or df_dwell.empty:
+            st.info("No dwell-time records found for the selection.")
         else:
-            center_lat = stops_grouped_df["avg_lat"].mean()
-            center_lon = stops_grouped_df["avg_lon"].mean()
-
-            # Distanz berechnen
-            stops_grouped_df["distance_to_center"] = haversine(
-                stops_grouped_df["avg_lat"], stops_grouped_df["avg_lon"],
-                center_lat, center_lon
-            )
-
-            # Nur Stops innerhalb 20 km
-            stops_near = stops_grouped_df[stops_grouped_df["distance_to_center"] <= 20]
-
-            m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
-
-            # MarkerCluster initialisieren
-            marker_cluster = MarkerCluster().add_to(m)
-
-            for row in stops_near.itertuples():
-                folium.Marker(
-                    location=[row.avg_lat, row.avg_lon],
-                    popup=f"{row.stop_name} ({row.stop_count} Stops)",
-                    icon=folium.Icon(color="blue", icon="info-sign")
-                ).add_to(marker_cluster)
-
-            folium_static(m)
+            st.success(f"Found {len(df_dwell)} records.")
+            # enrich with route names
+            routes_info = TripManager().get_infos_by_trip_id(df_dwell["gtfs_trip_id"].tolist())
+            routes_info = routes_info.rename(columns={"trip_id": "gtfs_trip_id", "route_short_name": "line"})
+            # Only display desired columns: Line, Vehicle, Arrival, Departure, Dwell (s)
+            df_out = df_dwell.merge(routes_info, on="gtfs_trip_id", how="left")
+            df_out = df_out[["line", "vehicle_id", "arrival", "departure", "dwell_seconds"]]
+            df_out.columns = ["Line", "Vehicle", "Arrival", "Departure", "Dwell (s)"]
+            # Filter out records where line is missing
+            df_out = df_out[df_out["Line"].notna()]
+            st.dataframe(df_out, use_container_width=True)
