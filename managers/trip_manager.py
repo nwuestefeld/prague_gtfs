@@ -32,8 +32,9 @@ class TripManager:
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            cursor.execute("DROP TABLE IF EXISTS trips")
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS trips (
+                CREATE TABLE trips (
                     trip_id TEXT PRIMARY KEY,
                     route_id TEXT,
                     service_id TEXT,
