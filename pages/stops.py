@@ -34,6 +34,7 @@ st.markdown(
     """
     Use **Overview** to browse all Prague stops on an interactive map and in a sortable table.  
     Switch to **Dwell&nbsp;Time&nbsp;Analysis** for insights into how long vehicles actually remain at each stop.
+    Use the **Stop Throughput** tab to analyze average stop throughput per hour over a selected date range.
     """,
     unsafe_allow_html=True,
 )
