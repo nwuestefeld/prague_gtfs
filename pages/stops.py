@@ -18,7 +18,7 @@ and plot stop locations on a map to identify delay hotspots.
 """
 
 # Page layout
-st.set_page_config(page_title="Stops Analytics", page_icon="🚏", layout="wide")
+#st.set_page_config(page_title="Stops Analytics", page_icon="🚏", layout="wide")
 st.title("Stops Analytics")
 st.write("Delays of vehicles at stops (state_position = 'at_stop').")
 st.markdown("""
