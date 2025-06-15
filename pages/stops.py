@@ -28,6 +28,7 @@ Users can view stops grouped by name, inspect current vehicle delays at each sto
 and plot stop locations on a map to identify delay hotspots.
 """
 
+
 st.title("Stops Analytics")
 st.write("Delays of vehicles at stops (state_position = 'at_stop').")
 st.markdown("""

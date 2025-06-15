@@ -210,50 +210,53 @@ with tab1:
             apply = st.form_submit_button("Apply")
 
             if apply:
-                if selected_types:
-                    filtered_df = df_session[df_session['route_type'].isin(selected_types)].copy()
-                    if not filtered_df.empty:
-                        filtered_df['first_timestamp'] = pd.to_datetime(filtered_df['first_timestamp'])
-
-                        if selected_interval == "5min":
-                            filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("5min")
-                        elif selected_interval == "hourly":
-                            filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("h")
-                        elif selected_interval == "daily":
-                            filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("D")
-
-                        show_overall_avg = st.checkbox("Show average over all selected vehicle types", value=True)
-
-                        delay_by_type = (
-                            filtered_df.groupby(['time_bin', 'route_type'])['delay'].mean().reset_index()
-                        )
-
-                        fig = px.line(
-                            delay_by_type,
-                            x='time_bin',
-                            y='delay',
-                            color='route_type',
-                            title=f'Average Delay ({selected_interval}) by Vehicle Type',
-                            labels={'time_bin': 'Time', 'delay': 'Average Delay (seconds)', 'route_type': 'Vehicle Type'}
-                        )
-
-                        if show_overall_avg:
-                            delay_overall = (
-                                filtered_df.groupby('time_bin')['delay'].mean().reset_index()
-                            )
-                            fig.add_scatter(
-                                x=delay_overall['time_bin'],
-                                y=delay_overall['delay'],
-                                mode='lines',
-                                line=dict(color='black', width=3, dash='dash'),
-                                name='Overall Average'
-                            )
-
-                        st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        st.warning("No data available for the selected vehicle types.")
+                if st.session_state["pem_key_content"] is None or st.session_state["pem_key_path"] is None or st.session_state["SSH_USER"] is None or st.session_state["api_key"] is None:  
+                    st.error("Please upload a PEM key first.")
                 else:
-                    st.warning("Please select at least one vehicle type.")
+                    if selected_types:
+                        filtered_df = df_session[df_session['route_type'].isin(selected_types)].copy()
+                        if not filtered_df.empty:
+                            filtered_df['first_timestamp'] = pd.to_datetime(filtered_df['first_timestamp'])
+
+                            if selected_interval == "5min":
+                                filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("5min")
+                            elif selected_interval == "hourly":
+                                filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("h")
+                            elif selected_interval == "daily":
+                                filtered_df['time_bin'] = filtered_df['first_timestamp'].dt.floor("D")
+
+                            show_overall_avg = st.checkbox("Show average over all selected vehicle types", value=True)
+
+                            delay_by_type = (
+                                filtered_df.groupby(['time_bin', 'route_type'])['delay'].mean().reset_index()
+                            )
+
+                            fig = px.line(
+                                delay_by_type,
+                                x='time_bin',
+                                y='delay',
+                                color='route_type',
+                                title=f'Average Delay ({selected_interval}) by Vehicle Type',
+                                labels={'time_bin': 'Time', 'delay': 'Average Delay (seconds)', 'route_type': 'Vehicle Type'}
+                            )
+
+                            if show_overall_avg:
+                                delay_overall = (
+                                    filtered_df.groupby('time_bin')['delay'].mean().reset_index()
+                                )
+                                fig.add_scatter(
+                                    x=delay_overall['time_bin'],
+                                    y=delay_overall['delay'],
+                                    mode='lines',
+                                    line=dict(color='black', width=3, dash='dash'),
+                                    name='Overall Average'
+                                )
+
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.warning("No data available for the selected vehicle types.")
+                    else:
+                        st.warning("Please select at least one vehicle type.")
 
 # Tab 2: Delay Statistics
 with tab2:
@@ -279,7 +282,7 @@ with tab3:
     st.subheader("Top 10 Delays")
 
     if "df" not in st.session_state or st.session_state["df"].empty:
-        st.info("No data available to display top delays.")
+        st.info("No data available to display top delays. Please apply filters in the delay distribution tab first.") 
     else:
         df = st.session_state["df"]
         top_delays = df.groupby('gtfs_trip_id')['delay'].max().reset_index().sort_values(by='delay', ascending=False).head(10)
@@ -287,12 +290,15 @@ with tab3:
         extra_cols = TripManager().get_infos_by_trip_id(top_delay_list)
         extra_cols = extra_cols.rename(columns={'trip_id': 'gtfs_trip_id'})
         top_delays = top_delays.merge(extra_cols, on='gtfs_trip_id', how='left')
+        top_delays = top_delays.drop(columns=['shape_id','route_color'])
         print(top_delays.columns)
         top_delays['route_short_name'] = top_delays.apply(
             lambda row: row['gtfs_trip_id'].split('_')[0] if pd.isna(row['route_short_name']) or row['route_short_name'] == '' else row['route_short_name'],
         axis=1
         )
-        st.write("Top 10 Delays by Vehicle Type")
+        st.write("Top 10 Delayed Trips by Maximum Delay")
+        st.write("This page shows the top 10 delayed trips based on maximum delay.")
+
         st.dataframe(top_delays)
 
 # Tab 4: Pie Chart
@@ -314,15 +320,15 @@ with tab4:
         fig = px.pie(
             pie_df,
             names="route_type",
-            values="total_delay",
-            title="Total Delay by Vehicle Type",
-            hover_data=["unique_vehicles"]
+            values="unique_vehicles",
+            title="Number of unique delayed trips by Vehicle Type",
+            hover_data=["total_delay", "unique_vehicles"],
         )
         fig.update_traces(textinfo="percent+label")
 
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Not enough data available to display a pie chart.")
+        st.info("Not enough data available to display a pie chart or no data has been loaded yet. Please apply filters in the delay distribution tab first.")
 
 # Tab 5: Predictions
 with tab5:
