@@ -99,6 +99,10 @@ These dependencies are listed in the `requirements.txt` file. You can install th
 
    ![Enter the data in the form](images/delay_mean_5min.png)
 
+   If you want to conduct further analysis with the data, you can simply export it on the **Export Data* tab
+
+   ![Export Data](images/download.png)
+
 
 
 
