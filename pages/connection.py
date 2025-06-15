@@ -68,7 +68,7 @@ def settings_page():
                 env_content = env_file.read().decode("utf-8")
                 with open(".env", "w") as f:
                     f.write(env_content)
-                st.success("Environment variables loaded successfully.")
+                
             except Exception as e:
                 st.error(f"Failed to load environment variables: {e}")
             if st.button("Apply Environment"):
@@ -79,9 +79,14 @@ def settings_page():
                 #st.write("SERVER_ADDRESS from os.getenv:", os.getenv("SERVER_ADDRESS"))
                 st.session_state["api_key"] = os.getenv("API_KEY")
                 st.session_state["pem_key_path"] = os.getenv("KEY_PATH")
+
                 st.session_state["SSH_USER"] = os.getenv("SSH_USER")
+                if not st.session_state["SSH_USER"]:
+                    st.session_state["SSH_USER"] = os.getenv("USER")
+                print("SSH_USER:", st.session_state["SSH_USER"])
                 st.session_state["SERVER_ADDRESS"] = os.getenv("SERVER_ADDRESS")
                 st.session_state["API_URL"] = os.getenv("API_URL")
+                st.success("Environment variables loaded successfully.")
 
 
         # PEM-Key
