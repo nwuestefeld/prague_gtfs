@@ -305,8 +305,7 @@ with dwell_tab:
                 try:
                     if  st.session_state["SERVER_ADDRESS"] is None or st.session_state["API_URL"] is None or st.session_state["api_key"] is None:
                         st.error("Please upload .env file first.")
-                    elif st.session_state["pem_key_content"] is None:
-                        st.error("Please upload PEM key file first.")
+                        st.stop()
                     rm = RequestManager()
                     cols = ["vehicle_id", "gtfs_trip_id", "route_type", "lat", "lon", "ts"]
                     df = rm.server_request(q, columns=cols)
