@@ -80,7 +80,7 @@ To fetch the historic delays a proxy fetching server is obtaining the current de
          venv\Scripts\activate.bat
          ```
 
-   3. **Install the requirements**
+   3. **Install the requirements** (Might need to move to the right folder)
          ```bash
          pip install -r requirements.txt
          ```
