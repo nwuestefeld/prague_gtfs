@@ -167,10 +167,17 @@ with overview_tab:
         return assigned
     # --- Initial data display ---
     parents_df = load_parent_stations()
+    if parents_df is None or parents_df.empty:
+        st.error("Could not load stop information from the local database.")
+        st.stop()
 
     st.subheader("Prague Stops (zone P)")
-    stops_grouped_df = get_stops_grouped_by_name()
-    
+    try:
+        stops_grouped_df = get_stops_grouped_by_name()
+    except Exception as exc:
+        st.error(f"Failed to read stops from database: {exc}")
+        st.stop()
+
     stops_grouped_df = stops_grouped_df.rename(
         columns={
             "stop_name": "Stop",
@@ -179,22 +186,20 @@ with overview_tab:
             "stop_count": "Number of Platforms",
         }
     )
-   
+
+    # fallback guard – halt gracefully if table is empty
+    if stops_grouped_df.empty:
+        st.info("No stops found in the database.")
+        st.stop()
+
     stops_grouped_df["stop_name"] = stops_grouped_df["Stop"]
-   
     stops_grouped_df["avg_lat"] = stops_grouped_df["Latitude"]
     stops_grouped_df["avg_lon"] = stops_grouped_df["Longitude"]
-    
     stops_grouped_df = stops_grouped_df[stops_grouped_df["Stop"].notna()]
-    
     stops_grouped_df["Stop"] = stops_grouped_df["Stop"].astype(str).str.strip()
     stops_grouped_df = stops_grouped_df[~stops_grouped_df["Stop"].str.fullmatch(r"E\d+")]
-    if stops_grouped_df.empty:
-        st.warning("No stops found in the database.")
-    else:
-        
-        display_cols = ["Stop", "Latitude", "Longitude", "Number of Platforms"]
-        st.dataframe(stops_grouped_df[display_cols])
+    display_cols = ["Stop", "Latitude", "Longitude", "Number of Platforms"]
+    st.dataframe(stops_grouped_df[display_cols])
 
     # --- Map: All stops in zone P ---------------------------------------------
     st.markdown("### 🗺️ Map of All Stops Prague")
@@ -296,117 +301,124 @@ with dwell_tab:
                 "ORDER BY vehicle_id, timestamp"
             )
             with st.spinner("This might take a while"):
-                rm = RequestManager()
-                cols = ["vehicle_id", "gtfs_trip_id", "route_type", "lat", "lon", "ts"]
-                df = rm.server_request(q, columns=cols)
+                try:
+                    rm = RequestManager()
+                    cols = ["vehicle_id", "gtfs_trip_id", "route_type", "lat", "lon", "ts"]
+                    df = rm.server_request(q, columns=cols)
+                except Exception as exc:
+                    st.error(f"Unable to retrieve dwell‑time data: {exc}")
+                    df = pd.DataFrame()
+
+            if df.empty:
+                st.info("No data returned for the selected period.")
+            else:
                 df = df[df["route_type"] != "metro"]
 
-        if df is None or df.empty:
-            st.info("No data")
-        else:
-            df["ts"] = pd.to_datetime(df["ts"])
-            df[["lat", "lon"]] = df[["lat", "lon"]].astype(float)
+                df["ts"] = pd.to_datetime(df["ts"])
+                df[["lat", "lon"]] = df[["lat", "lon"]].astype(float)
 
-            df["prev_lat"] = df.groupby("vehicle_id")["lat"].shift()
-            df["prev_lon"] = df.groupby("vehicle_id")["lon"].shift()
-            df["prev_ts"] = df.groupby("vehicle_id")["ts"].shift()
+                df["prev_lat"] = df.groupby("vehicle_id")["lat"].shift()
+                df["prev_lon"] = df.groupby("vehicle_id")["lon"].shift()
+                df["prev_ts"] = df.groupby("vehicle_id")["ts"].shift()
 
-            d = haversine(df["lat"], df["lon"], df["prev_lat"], df["prev_lon"])
-            dt = (df["ts"] - df["prev_ts"]).dt.total_seconds()
+                d = haversine(df["lat"], df["lon"], df["prev_lat"], df["prev_lon"])
+                dt = (df["ts"] - df["prev_ts"]).dt.total_seconds()
 
-            df["break"] = (
-                (df["vehicle_id"] != df["vehicle_id"].shift()) |
-                (d > 0.15) |                    # > 150 m
-                (dt > 300)                      # > 5 min
-            )
-            df["group_id"] = df["break"].cumsum()
-
-            agg = (
-                df.groupby("group_id")
-                .agg(
-                    vehicle_id=("vehicle_id", "first"),
-                    gtfs_trip_id=("gtfs_trip_id", "first"),
-                    lat=("lat", "first"),
-                    lon=("lon", "first"),
-                    arrival=("ts", "first"),
-                    departure=("ts", "last")
+                df["break"] = (
+                    (df["vehicle_id"] != df["vehicle_id"].shift()) |
+                    (d > 0.15) |                    # > 150 m
+                    (dt > 300)                      # > 5 min
                 )
-                .reset_index(drop=True)
-            )
-            agg["dwell_seconds"] = (agg["departure"] - agg["arrival"]).dt.total_seconds()
-            agg = agg[agg["dwell_seconds"] >= min_dwell]
+                df["group_id"] = df["break"].cumsum()
 
-            if agg.empty:
-                st.info("No dwell events ≥ threshold")
-            else:
-                agg["Stop"] = assign_nearest_parent(agg.rename(
-                    columns={"lat": "lat", "lon": "lon"}), stops_grouped_df)
-
-                routes = TripManager().get_infos_by_trip_id(agg["gtfs_trip_id"].tolist())
-                routes = routes.rename(columns={"trip_id": "gtfs_trip_id", "route_short_name": "Line"})
-                out = agg.merge(routes, on="gtfs_trip_id", how="left")
-                out = out[out["Line"].apply(is_valid_line)]
-                out = out[["Stop", "Line", "vehicle_id", "arrival", "departure", "dwell_seconds"]]
-                out.columns = ["Stop", "Line", "Vehicle", "Arrival", "Departure", "Dwell (s)"]
-
-                st.subheader("Single Dwell Time Events")
-                st.success(f"Found {len(out)} dwell events that meet the criteria")
-                st.dataframe(out, use_container_width=True)
-
-                # Cumulative Dwell Time per Stop
-                cum = out.groupby("Stop")["Dwell (s)"].sum().reset_index()
-                cum["Dwell (min)"] = cum["Dwell (s)"] / 60
-                cum = cum.sort_values("Dwell (min)", ascending=False)
-
-                st.subheader("Cumulative Dwell Time per Stop")
-                fig = px.bar(
-                    cum,
-                    x="Stop",
-                    y="Dwell (min)",
-                    labels={"Dwell (min)": "Total dwell (min)"},
-                    title=""
+                agg = (
+                    df.groupby("group_id")
+                    .agg(
+                        vehicle_id=("vehicle_id", "first"),
+                        gtfs_trip_id=("gtfs_trip_id", "first"),
+                        lat=("lat", "first"),
+                        lon=("lon", "first"),
+                        arrival=("ts", "first"),
+                        departure=("ts", "last")
+                    )
+                    .reset_index(drop=True)
                 )
-                st.plotly_chart(fig, use_container_width=True)
-                st.caption("Total dwell minutes accumulated at each stop during the selected period.")
+                agg["dwell_seconds"] = (agg["departure"] - agg["arrival"]).dt.total_seconds()
+                agg = agg[agg["dwell_seconds"] >= min_dwell]
 
-                st.subheader("Dwell Time Heatmap")
-                with st.spinner("Rendering heatmap…"):
-                    
-                    center_lat = stops_grouped_df["avg_lat"].mean()
-                    center_lon = stops_grouped_df["avg_lon"].mean()
-                    m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
-                    
-                    heat_data = [
-                        [
-                            stops_grouped_df.loc[stops_grouped_df["stop_name"] == stop, "avg_lat"].values[0],
-                            stops_grouped_df.loc[stops_grouped_df["stop_name"] == stop, "avg_lon"].values[0],
-                            dwell_min
-                        ]
-                        for stop, dwell_min in zip(cum["Stop"], cum["Dwell (min)"])
-                    ]
+                if agg.empty:
+                    st.info("No dwell events ≥ threshold")
+                else:
+                    try:
+                        agg["Stop"] = assign_nearest_parent(agg.rename(
+                            columns={"lat": "lat", "lon": "lon"}), stops_grouped_df)
 
-                    HeatMap(
-                        heat_data,
-                        radius=25,   
-                        blur=35,     
-                        max_zoom=13
-                    ).add_to(m)
-                    folium_static(m, width=700, height=450)
+                        routes = TripManager().get_infos_by_trip_id(agg["gtfs_trip_id"].tolist())
+                        routes = routes.rename(columns={"trip_id": "gtfs_trip_id", "route_short_name": "Line"})
+                        out = agg.merge(routes, on="gtfs_trip_id", how="left")
+                        out = out[out["Line"].apply(is_valid_line)]
+                        out = out[["Stop", "Line", "vehicle_id", "arrival", "departure", "dwell_seconds"]]
+                        out.columns = ["Stop", "Line", "Vehicle", "Arrival", "Departure", "Dwell (s)"]
 
-                # Average dwell time and event count per stop
-                stats = out.groupby("Stop").agg(
-                    avg_dwell_min=("Dwell (s)", lambda x: x.mean() / 60),
-                    event_count=("Dwell (s)", "count")
-                ).reset_index()
-                stats = stats.sort_values("avg_dwell_min", ascending=False)
-                st.subheader("Average Dwell Time vs. Event Count")
-                fig2 = px.scatter(
-                    stats,
-                    x="Stop",
-                    y="avg_dwell_min",
-                    size="event_count",
-                    labels={"avg_dwell_min": "Average dwell (min)", "event_count": "Number of events"},
-                    title=""
-                )
-                st.plotly_chart(fig2, use_container_width=True)
-                st.caption("Average dwell per stop; bubble size = number of dwell events.")
+                        st.subheader("Single Dwell Time Events")
+                        st.success(f"Found {len(out)} dwell events that meet the criteria")
+                        st.dataframe(out, use_container_width=True)
+
+                        # Cumulative Dwell Time per Stop
+                        cum = out.groupby("Stop")["Dwell (s)"].sum().reset_index()
+                        cum["Dwell (min)"] = cum["Dwell (s)"] / 60
+                        cum = cum.sort_values("Dwell (min)", ascending=False)
+
+                        st.subheader("Cumulative Dwell Time per Stop")
+                        fig = px.bar(
+                            cum,
+                            x="Stop",
+                            y="Dwell (min)",
+                            labels={"Dwell (min)": "Total dwell (min)"},
+                            title=""
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption("Total dwell minutes accumulated at each stop during the selected period.")
+
+                        st.subheader("Dwell Time Heatmap")
+                        with st.spinner("Rendering heatmap…"):
+                            center_lat = stops_grouped_df["avg_lat"].mean()
+                            center_lon = stops_grouped_df["avg_lon"].mean()
+                            m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
+
+                            heat_data = [
+                                [
+                                    stops_grouped_df.loc[stops_grouped_df["stop_name"] == stop, "avg_lat"].values[0],
+                                    stops_grouped_df.loc[stops_grouped_df["stop_name"] == stop, "avg_lon"].values[0],
+                                    dwell_min
+                                ]
+                                for stop, dwell_min in zip(cum["Stop"], cum["Dwell (min)"])
+                            ]
+
+                            HeatMap(
+                                heat_data,
+                                radius=25,   
+                                blur=35,     
+                                max_zoom=13
+                            ).add_to(m)
+                            folium_static(m, width=700, height=450)
+
+                        # Average dwell time and event count per stop
+                        stats = out.groupby("Stop").agg(
+                            avg_dwell_min=("Dwell (s)", lambda x: x.mean() / 60),
+                            event_count=("Dwell (s)", "count")
+                        ).reset_index()
+                        stats = stats.sort_values("avg_dwell_min", ascending=False)
+                        st.subheader("Average Dwell Time vs. Event Count")
+                        fig2 = px.scatter(
+                            stats,
+                            x="Stop",
+                            y="avg_dwell_min",
+                            size="event_count",
+                            labels={"avg_dwell_min": "Average dwell (min)", "event_count": "Number of events"},
+                            title=""
+                        )
+                        st.plotly_chart(fig2, use_container_width=True)
+                        st.caption("Average dwell per stop; bubble size = number of dwell events.")
+                    except Exception as exc:
+                        st.error(f"Unable to build visualisations: {exc}")
