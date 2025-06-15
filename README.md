@@ -97,7 +97,7 @@ These dependencies are listed in the `requirements.txt` file. You can install th
 
    For example:
 
-    ![Enter the data in the form](images/delay_mean_5min.png)
+   ![Enter the data in the form](images/delay_mean_5min.png)
 
 
 
