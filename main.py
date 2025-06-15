@@ -29,10 +29,10 @@ def main():
 
     **What you can do here:**
     - **Refresh Data**: Update your local static GTFS database (routes, stops, trips).
-    - **Navigate**: Use the sidebar to switch between Dashboard, Map, Stops, and Connections pages.
+    - **Navigate**: Use the sidebar to switch between Dashboard, Stops, and Connections pages.
     - **Realtime Insights**: View up-to-date delay information for trams, metro, buses, trolleybuses, and funicular.
 
-    Make sure to set your API key and upload your PEM key on the **Connections** page before using realtime features.
+    Make sure to set your Environment and upload your PEM key on the **Connections** page before using realtime features.
     """, unsafe_allow_html=True)
 
     if st.button("Refresh Data"):

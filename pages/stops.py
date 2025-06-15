@@ -18,6 +18,7 @@ api_url = os.getenv("API_URL")
 db_path = "database.db"
 headers = {"X-Access-Token": os.getenv("API_KEY")}
 
+
 st.title("Stops Analytics")
 
 """
@@ -302,7 +303,7 @@ with dwell_tab:
             )
             with st.spinner("This might take a while"):
                 try:
-                    if  st.session_state["SERVER_ADDRESS"] is None or st.session_state["API_URL"] is None or st.session_state["API_KEY"] is None:
+                    if  st.session_state["SERVER_ADDRESS"] is None or st.session_state["API_URL"] is None or st.session_state["api_key"] is None:
                         st.error("Please upload .env file first.")
                     elif st.session_state["pem_key_content"] is None:
                         st.error("Please upload PEM key file first.")

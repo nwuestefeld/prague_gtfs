@@ -33,7 +33,7 @@ These tools can help users:
 
    **Adam**  
    Focused on Stops dashboard, documentation and frontend usability, including:
-   - Stops dashboard and analytics
+   - Stops dashboard and analytics, including heatmap
    - Writing descriptive content and explanations
    - Enhancing UI/UX elements
    - Structuring pages and layout styling
