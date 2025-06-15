@@ -261,7 +261,7 @@ with st.form("dwell_form"):
     with c2:
         end_date = st.date_input("End", value=pd.Timestamp.now().date())
     with c3:
-        min_dwell = st.number_input("Min dwell (s)", 30, 3600, 120, step=30)
+        min_dwell = st.number_input("Min dwell (s)", 60, 3600, 60, step=60)
     run = st.form_submit_button("Run")
 
 if run:
@@ -273,62 +273,64 @@ if run:
         sd = f"{start_date} 00:00:00"
         ed = f"{end_date} 23:59:59"
         q = (
-            "SELECT vehicle_id, gtfs_trip_id, latitude, longitude, timestamp "
+            "SELECT vehicle_id, gtfs_trip_id, route_type, latitude, longitude, timestamp "
             "FROM vehicle_positions "
             "WHERE state_position='at_stop' "
             f"AND timestamp BETWEEN '{sd}' AND '{ed}' "
             "ORDER BY vehicle_id, timestamp"
         )
-        rm = RequestManager()
-        cols = ["vehicle_id", "gtfs_trip_id", "lat", "lon", "ts"]
-        df = rm.server_request(q, columns=cols)
+        with st.spinner("This might take a while"):
+            rm = RequestManager()
+            cols = ["vehicle_id", "gtfs_trip_id", "route_type", "lat", "lon", "ts"]
+            df = rm.server_request(q, columns=cols)
+            df = df[df["route_type"] != "metro"]
 
-        if df is None or df.empty:
-            st.info("No data")
+    if df is None or df.empty:
+        st.info("No data")
+    else:
+        df["ts"] = pd.to_datetime(df["ts"])
+        df[["lat", "lon"]] = df[["lat", "lon"]].astype(float)
+
+        df["prev_lat"] = df.groupby("vehicle_id")["lat"].shift()
+        df["prev_lon"] = df.groupby("vehicle_id")["lon"].shift()
+        df["prev_ts"] = df.groupby("vehicle_id")["ts"].shift()
+
+        d = haversine(df["lat"], df["lon"], df["prev_lat"], df["prev_lon"])
+        dt = (df["ts"] - df["prev_ts"]).dt.total_seconds()
+
+        df["break"] = (
+            (df["vehicle_id"] != df["vehicle_id"].shift()) |
+            (d > 0.15) |                    # > 150 m
+            (dt > 300)                      # > 5 min
+        )
+        df["group_id"] = df["break"].cumsum()
+
+        agg = (
+            df.groupby("group_id")
+            .agg(
+                vehicle_id=("vehicle_id", "first"),
+                gtfs_trip_id=("gtfs_trip_id", "first"),
+                lat=("lat", "first"),
+                lon=("lon", "first"),
+                arrival=("ts", "first"),
+                departure=("ts", "last")
+            )
+            .reset_index(drop=True)
+        )
+        agg["dwell_seconds"] = (agg["departure"] - agg["arrival"]).dt.total_seconds()
+        agg = agg[agg["dwell_seconds"] >= min_dwell]
+
+        if agg.empty:
+            st.info("No dwell events ≥ threshold")
         else:
-            df["ts"] = pd.to_datetime(df["ts"])
-            df[["lat", "lon"]] = df[["lat", "lon"]].astype(float)
+            agg["Stop"] = assign_nearest_parent(agg.rename(
+                columns={"lat": "lat", "lon": "lon"}), stops_grouped_df)
 
-            df["prev_lat"] = df.groupby("vehicle_id")["lat"].shift()
-            df["prev_lon"] = df.groupby("vehicle_id")["lon"].shift()
-            df["prev_ts"] = df.groupby("vehicle_id")["ts"].shift()
-
-            d = haversine(df["lat"], df["lon"], df["prev_lat"], df["prev_lon"])
-            dt = (df["ts"] - df["prev_ts"]).dt.total_seconds()
-
-            df["break"] = (
-                (df["vehicle_id"] != df["vehicle_id"].shift()) |
-                (d > 0.15) |                    # > 150 m
-                (dt > 300)                      # > 5 min
-            )
-            df["group_id"] = df["break"].cumsum()
-
-            agg = (
-                df.groupby("group_id")
-                .agg(
-                    vehicle_id=("vehicle_id", "first"),
-                    gtfs_trip_id=("gtfs_trip_id", "first"),
-                    lat=("lat", "first"),
-                    lon=("lon", "first"),
-                    arrival=("ts", "first"),
-                    departure=("ts", "last")
-                )
-                .reset_index(drop=True)
-            )
-            agg["dwell_seconds"] = (agg["departure"] - agg["arrival"]).dt.total_seconds()
-            agg = agg[agg["dwell_seconds"] >= min_dwell]
-
-            if agg.empty:
-                st.info("No dwell events ≥ threshold")
-            else:
-                agg["Stop"] = assign_nearest_parent(agg.rename(
-                    columns={"lat": "lat", "lon": "lon"}), stops_grouped_df)
-
-                routes = TripManager().get_infos_by_trip_id(agg["gtfs_trip_id"].tolist())
-                routes = routes.rename(columns={"trip_id": "gtfs_trip_id", "route_short_name": "Line"})
-                out = agg.merge(routes, on="gtfs_trip_id", how="left")
-                out = out[out["Line"].apply(is_valid_line)]
-                out = out[["Stop", "Line", "vehicle_id", "arrival", "departure", "dwell_seconds"]]
-                out.columns = ["Stop", "Line", "Vehicle", "Arrival", "Departure", "Dwell (s)"]
-                st.success(f"Found {len(out)} dwell events")
-                st.dataframe(out, use_container_width=True)
+            routes = TripManager().get_infos_by_trip_id(agg["gtfs_trip_id"].tolist())
+            routes = routes.rename(columns={"trip_id": "gtfs_trip_id", "route_short_name": "Line"})
+            out = agg.merge(routes, on="gtfs_trip_id", how="left")
+            out = out[out["Line"].apply(is_valid_line)]
+            out = out[["Stop", "Line", "vehicle_id", "arrival", "departure", "dwell_seconds"]]
+            out.columns = ["Stop", "Line", "Vehicle", "Arrival", "Departure", "Dwell (s)"]
+            st.success(f"Found {len(out)} dwell events")
+            st.dataframe(out, use_container_width=True)
