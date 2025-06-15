@@ -426,3 +426,5 @@ with dwell_tab:
                         st.caption("Average dwell per stop; bubble size = number of dwell events.")
                     except Exception as exc:
                         st.error(f"Unable to build visualisations: {exc}")
+
+
