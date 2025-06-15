@@ -6,7 +6,32 @@ from managers.request_manager import RequestManager
 from managers.trip_manager import TripManager
 from managers.shape_manager import ShapeManager
 from shapely import wkt
+
 from datetime import datetime, time
+
+
+# Route short name filter
+def _is_valid_short(name: str) -> bool:
+    if not isinstance(name, str):
+        return False
+    l = len(name)
+    if l < 1 or l > 4:
+        return False
+    if name[0].isalpha():
+        if name[0] not in ("X", "A", "B", "C"):
+            return False
+        if name[0] == "X":
+            num = name[1:]
+            if not num.isdigit():
+                return False
+            n = int(num)
+            return (1 <= n <= 99) or (100 <= n <= 250) or (901 <= n <= 917)
+        else:
+            return l == 1
+    if name.isdigit():
+        n = int(name)
+        return (1 <= n <= 99) or (100 <= n <= 250) or (901 <= n <= 917)
+    return False
 
 
 
@@ -115,7 +140,7 @@ with tab1:
                 columns = ["gtfs_trip_id", "vehicle_id", "route_type", "gtfs_route_short_name", "delay", "first_timestamp"]
                 rm = RequestManager()
                 df = rm.server_request(query, columns=columns)
-                
+                df = df[df['gtfs_route_short_name'].apply(_is_valid_short)]
 
                 if df is None:
                     st.error("Server request returned None!")
@@ -146,7 +171,7 @@ with tab1:
                         ax.set_ylabel("Number of observations")
                         st.pyplot(fig)
                     else:
-                        st.success(f"No delay data of vehicle type {vehicle_type} over {min_delay} seconds.")
+                        st.success(f"No delay data for the selected vehicle type over {min_delay} seconds.")
 
             st.subheader("Delay Statistics")
             st.write("Mean and maximum delay grouped by vehicle type.")

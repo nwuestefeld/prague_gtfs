@@ -5,9 +5,20 @@ from folium.plugins import MarkerCluster
 import numpy as np
 import pandas as pd
 import sqlite3
+
 from managers.request_manager import RequestManager
 from managers.stop_manager import StopManager
 from managers.shape_manager import ShapeManager
+from managers.trip_manager import TripManager
+
+# Load environment variables for API access
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+api_url = os.getenv("API_URL")
+db_path = "database.db"
+headers = {"X-Access-Token": os.getenv("API_KEY")}
 
 
 """
@@ -17,8 +28,7 @@ Users can view stops grouped by name, inspect current vehicle delays at each sto
 and plot stop locations on a map to identify delay hotspots.
 """
 
-# Page layout
-#st.set_page_config(page_title="Stops Analytics", page_icon="🚏", layout="wide")
+
 st.title("Stops Analytics")
 st.write("Delays of vehicles at stops (state_position = 'at_stop').")
 st.markdown("""
@@ -115,6 +125,47 @@ def haversine(lat1, lon1, lat2, lon2):
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
 
     return R * c
+
+def is_valid_line(line: str) -> bool:
+    if not isinstance(line, str):
+        return False
+    line = line.strip()
+    ln = len(line)
+    if ln == 0 or ln > 4:
+        return False
+    if line[0].isalpha():
+        if line[0] not in {"X", "A", "B", "C"}:
+            return False
+        if line[0] == "X":
+            num = line[1:]
+            if not num.isdigit():
+                return False
+            n = int(num)
+            return (1 <= n <= 99) or (100 <= n <= 250) or (901 <= n <= 917)
+        # single letter A, B or C only
+        return ln == 1
+    # purely numeric
+    if not line.isdigit():
+        return False
+    n = int(line)
+    return (1 <= n <= 99) or (100 <= n <= 250) or (901 <= n <= 917)
+
+def assign_nearest_parent(df: pd.DataFrame, stops_df: pd.DataFrame) -> list[str]:
+    if df.empty:
+        return []
+    lat0 = df["lat"].to_numpy()
+    lon0 = df["lon"].to_numpy()
+    p_lat = stops_df["avg_lat"].to_numpy()
+    p_lon = stops_df["avg_lon"].to_numpy()
+    p_names = stops_df["stop_name"].to_numpy()
+
+    assigned = []
+    for y, x in zip(lat0, lon0):
+        dlat = p_lat - y
+        dlon = p_lon - x
+        idx = np.argmin(dlat * dlat + dlon * dlon)
+        assigned.append(p_names[idx])
+    return assigned
 # --- Initial data display ---
 parents_df = load_parent_stations()
 
@@ -131,116 +182,156 @@ if stops_grouped_df.empty:
 else:
     st.dataframe(stops_grouped_df)
 
+# --- Map: All stops in zone P ---------------------------------------------
+st.markdown("### 🗺️ Map of All Stops Prague")
+station_options = ["ALL STATIONS"] + sorted(stops_grouped_df["stop_name"].unique())
+station_choice = st.selectbox("Select a Station to View Individual Platforms", station_options)
+
+if station_choice == "ALL STATIONS":
+    with st.spinner("Rendering map…"):
+        center_lat = stops_grouped_df["avg_lat"].mean()
+        center_lon = stops_grouped_df["avg_lon"].mean()
+
+        base_map = folium.Map(location=[center_lat, center_lon], zoom_start=12)
+        cluster = MarkerCluster().add_to(base_map)
+
+        # complete list of individual platforms for popup details
+        all_stops = sqlite3.connect("database.db", check_same_thread=False) \
+                         .cursor() \
+                         .execute(
+                            "SELECT stop_name, stop_id, latitude, longitude "
+                            "FROM stops WHERE latitude IS NOT NULL AND longitude IS NOT NULL"
+                         ).fetchall()
+
+        from collections import defaultdict
+        platform_dict = defaultdict(list)
+        for name, sid, lat, lon in all_stops:
+            platform_dict[name].append(sid)
+
+        for row in stops_grouped_df.itertuples():
+            popup_html = (
+                f"<b>{row.stop_name}</b><br/>"
+                f"Number of platforms: {len(platform_dict[row.stop_name])}"
+            )
+            folium.Marker(
+                location=[row.avg_lat, row.avg_lon],
+                popup=popup_html,
+                icon=folium.Icon(color='green', icon='info-sign')
+            ).add_to(cluster)
+
+        folium_static(base_map, width=700, height=450)
+else:
+    # Individual station view
+    selected_name = station_choice
+    # fetch individual platform coordinates
+    platform_rows = [
+        (sid, code, lat, lon) for name, sid, code, lat, lon in sqlite3.connect("database.db", check_same_thread=False)
+                            .cursor()
+                            .execute(
+                                "SELECT stop_name, stop_id, platform_code, latitude, longitude "
+                                "FROM stops WHERE latitude IS NOT NULL AND longitude IS NOT NULL"
+                            ).fetchall()
+        if name == selected_name and code
+    ]
+    if platform_rows:
+        # center on first platform
+        _, _, lat0, lon0 = platform_rows[0]
+        base_map = folium.Map(location=[lat0, lon0], zoom_start=16)
+        for sid, code, lat, lon in platform_rows:
+            popup_html = (
+                f"<b>{selected_name}</b><br/>"
+                f"Platform {code}"
+            )
+            folium.Marker(
+                location=[lat, lon],
+                popup=popup_html,
+                icon=folium.Icon(color='blue', icon='info-sign')
+            ).add_to(base_map)
+        folium_static(base_map, width=700, height=450)
+    else:
+        st.info(f"No platform data available for {selected_name}.")
+
 st.markdown("---")
 
-# --- Delays Section ---
-st.subheader("Vehicle Delays at Stops")
+# --- Dwell Time Analysis -------------------------------------------------
+st.subheader("Dwell Time at Stops")
+with st.form("dwell_form"):
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        start_date = st.date_input("Start", value=pd.Timestamp.now().date())
+    with c2:
+        end_date = st.date_input("End", value=pd.Timestamp.now().date())
+    with c3:
+        min_dwell = st.number_input("Min dwell (s)", 60, 3600, 60, step=60)
+    run = st.form_submit_button("Run")
 
-st.markdown("""
-Please select a parent station group. After clicking the button, the current delays of vehicles
-at the stops in this group will be displayed.
-""")
-
-with st.form("filter_form"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            start_date = st.date_input("Select Start date")
-        with col2:
-            end_date = st.date_input("Select End date")
-        with col3:
-            min_delay = st.number_input("Min delay: default is 60 Sec, Default is 360 Sec", min_value=60, max_value=3600, value=360)
-        submitted = st.form_submit_button("Apply")
-
-if submitted:
-    # some checks.
+if run:
     if start_date > end_date:
-        st.error("Start date cannot be after end date.")
-    if  start_date > pd.Timestamp.now().date():
-        st.error("Start or End date cannot be in the future.")
+        st.error("Start date > end date")
+    elif end_date > pd.Timestamp.now().date():
+        st.error("End date ve future")
     else:
-        #TODO ensure that no double entries when vehicle is at stop for multiple timestamps
-        # that means same trip_id and roungly same  lat and long ->unique trip id and stop combi
-        start_date_str = start_date.strftime('%Y-%m-%d') + " 00:00:00"
-        end_date_str = end_date.strftime('%Y-%m-%d') + " 23:59:00"
-        st.success(f"Selected date range: {start_date_str} to {end_date_str}")
-        minx, miny, maxx, maxy = ShapeManager().set_bounding_box()
-        base_query = f"""
-        SELECT
-        vehicle_id,
-        gtfs_trip_id,
-        route_type,
-        gtfs_route_short_name,
-        delay,
-        bearing,
-        timestamp,
-        latitude,
-        longitude
-        FROM vehicle_positions
-        WHERE state_position = 'at_stop'
-        AND longitude BETWEEN '{minx}' AND '{maxx}'
-        AND latitude BETWEEN '{miny}' AND '{maxy}'
-        AND route_type <> 2
-        AND delay > '{min_delay}'
-        AND timestamp BETWEEN '{start_date_str}' AND '{end_date_str}'
-        """
-        rm = RequestManager()
-        columns = [
-        "vehicle_id", "gtfs_trip_id", "route_type", "gtfs_route_short_name",
-        "delay", "bearing", "timestamp", "latitude", "longitude"
-        ]
-        with st.spinner("Loading data..."):
-            vp_df = rm.server_request(base_query, columns=columns)
-            print(vp_df.head())
-            if vp_df is None or vp_df.empty:
-                st.info("No data returned from remote vehicle_positions DB (or no delays). Please try a different date range or check the database.")
-                st.stop()
-            else:
-                st.success(f"Found vehicles on stops with delays greater than {min_delay} seconds.")
+        sd = f"{start_date} 00:00:00"
+        ed = f"{end_date} 23:59:59"
+        q = (
+            "SELECT vehicle_id, gtfs_trip_id, route_type, latitude, longitude, timestamp "
+            "FROM vehicle_positions "
+            "WHERE state_position='at_stop' "
+            f"AND timestamp BETWEEN '{sd}' AND '{ed}' "
+            "ORDER BY vehicle_id, timestamp"
+        )
+        with st.spinner("This might take a while"):
+            rm = RequestManager()
+            cols = ["vehicle_id", "gtfs_trip_id", "route_type", "lat", "lon", "ts"]
+            df = rm.server_request(q, columns=cols)
+            df = df[df["route_type"] != "metro"]
 
-            with st.spinner("Matching Stations with Database"):
-                # Match stations with lat and long from on stop vehicle positions
-                sm = StopManager()
-                stops_df = sm.get_stops()
-                if stops_df.empty:
-                    st.error("Please ensure that the stops table is populated in the database. You can do this by refreshing the database on the Connections page.")
-                    st.stop()
-                else:
-                    matched_stops = sm.match_nearest_stops(vp_df, stops_df, 100)
-                    st.dataframe(matched_stops.head(10), use_container_width=True)
+    if df is None or df.empty:
+        st.info("No data")
+    else:
+        df["ts"] = pd.to_datetime(df["ts"])
+        df[["lat", "lon"]] = df[["lat", "lon"]].astype(float)
 
+        df["prev_lat"] = df.groupby("vehicle_id")["lat"].shift()
+        df["prev_lon"] = df.groupby("vehicle_id")["lon"].shift()
+        df["prev_ts"] = df.groupby("vehicle_id")["ts"].shift()
 
+        d = haversine(df["lat"], df["lon"], df["prev_lat"], df["prev_lon"])
+        dt = (df["ts"] - df["prev_ts"]).dt.total_seconds()
 
+        df["break"] = (
+            (df["vehicle_id"] != df["vehicle_id"].shift()) |
+            (d > 0.15) |                    # > 150 m
+            (dt > 300)                      # > 5 min
+        )
+        df["group_id"] = df["break"].cumsum()
 
-
-    with st.expander("Map of Delays"):
-        st.subheader("🗺️ Stop Locations on Map")
-        stops_grouped_df = get_stops_grouped_by_name()
-
-        if stops_grouped_df.empty:
-            st.info("No stops found to plot.")
-        else:
-            center_lat = stops_grouped_df["avg_lat"].mean()
-            center_lon = stops_grouped_df["avg_lon"].mean()
-
-            # Distanz berechnen
-            stops_grouped_df["distance_to_center"] = haversine(
-                stops_grouped_df["avg_lat"], stops_grouped_df["avg_lon"],
-                center_lat, center_lon
+        agg = (
+            df.groupby("group_id")
+            .agg(
+                vehicle_id=("vehicle_id", "first"),
+                gtfs_trip_id=("gtfs_trip_id", "first"),
+                lat=("lat", "first"),
+                lon=("lon", "first"),
+                arrival=("ts", "first"),
+                departure=("ts", "last")
             )
+            .reset_index(drop=True)
+        )
+        agg["dwell_seconds"] = (agg["departure"] - agg["arrival"]).dt.total_seconds()
+        agg = agg[agg["dwell_seconds"] >= min_dwell]
 
-            # Nur Stops innerhalb 20 km
-            stops_near = stops_grouped_df[stops_grouped_df["distance_to_center"] <= 20]
+        if agg.empty:
+            st.info("No dwell events ≥ threshold")
+        else:
+            agg["Stop"] = assign_nearest_parent(agg.rename(
+                columns={"lat": "lat", "lon": "lon"}), stops_grouped_df)
 
-            m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
-
-            # MarkerCluster initialisieren
-            marker_cluster = MarkerCluster().add_to(m)
-
-            for row in stops_near.itertuples():
-                folium.Marker(
-                    location=[row.avg_lat, row.avg_lon],
-                    popup=f"{row.stop_name} ({row.stop_count} Stops)",
-                    icon=folium.Icon(color="blue", icon="info-sign")
-                ).add_to(marker_cluster)
-
-            folium_static(m)
+            routes = TripManager().get_infos_by_trip_id(agg["gtfs_trip_id"].tolist())
+            routes = routes.rename(columns={"trip_id": "gtfs_trip_id", "route_short_name": "Line"})
+            out = agg.merge(routes, on="gtfs_trip_id", how="left")
+            out = out[out["Line"].apply(is_valid_line)]
+            out = out[["Stop", "Line", "vehicle_id", "arrival", "departure", "dwell_seconds"]]
+            out.columns = ["Stop", "Line", "Vehicle", "Arrival", "Departure", "Dwell (s)"]
+            st.success(f"Found {len(out)} dwell events")
+            st.dataframe(out, use_container_width=True)

@@ -20,6 +20,25 @@ class RouteManager:
         self.db_path = db_path  
         self.headers = headers
 
+    def _valid_short_name(self, name: str) -> bool:
+        valid = False
+        if isinstance(name, str) and 0 < len(name) <= 4:
+            if name[0] in ("X", "A", "B", "C"):
+                if name[0] == "X":
+                    rest = name[1:]
+                    if rest.isdigit():
+                        n = int(rest)
+                        if (1 <= n <= 99) or (100 <= n <= 250) or (901 <= n <= 917):
+                            valid = True
+                else:
+                    if len(name) == 1:
+                        valid = True
+            elif name.isdigit():
+                n = int(name)
+                if (1 <= n <= 99) or (100 <= n <= 250) or (901 <= n <= 917):
+                    valid = True
+        return valid
+
     def get_routes(self):
         """Fetch all routes from the GTFS API.
 
@@ -43,8 +62,9 @@ class RouteManager:
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            cursor.execute("DROP TABLE IF EXISTS routes")
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS routes (
+                CREATE TABLE routes (
                     route_id TEXT PRIMARY KEY,
                     agency_id TEXT,
                     route_short_name TEXT,
@@ -74,7 +94,8 @@ class RouteManager:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             for route in routes:
-                if route.get("route_type") == 2:
+                short = route.get("route_short_name") or ""
+                if route.get("route_type") == 2 or not self._valid_short_name(short):
                     continue
                 cursor.execute("""
                     INSERT OR REPLACE INTO routes (

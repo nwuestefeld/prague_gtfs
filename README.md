@@ -1,13 +1,14 @@
 # Vehicle Positions API Project
 
-This project fetches vehicle positions from an API and stores them in a database for efficient querying and access. 
-Data is processed for visualisation and analytics tasks
-
-## API Endpoint
-
-To fetch vehicle positions, the project uses the following API:
+This project fetches realtime vehicle positions from the Prague Public Transit Company and provides visualisations and analytics of the trips and stops.
+To fetch vehicle positions and sationary data, the project uses the following API:
 
 - **API URL**: `https://api.golemio.cz/pid/docs/openapi/` 
+
+
+
+By Nils Wüstefeld and Adam Pasalek
+
 
 ## Setup Instructions
 
@@ -38,8 +39,7 @@ These dependencies are listed in the `requirements.txt` file. You can install th
    pip install -r requirements.txt
     ```
 
-
-4. **Setup Environment file .env** and include in .gitignore (!!!!!!!!!)
+4. **Get Enviroment file .env and .pem from the admin or optionally build your own**: the .env file should look like this:
     ```bash
     API_KEY=your_api_key_here
     API_URL=https://your-api-url.com/endpoint
@@ -51,6 +51,25 @@ These dependencies are listed in the `requirements.txt` file. You can install th
    python -m streamlit run main.py
 
    ```
+## Start the Application
+   After running the application, you will land on the landing page.
+   From there navigate to the Settings page and upload the environment file and the private key for the fetching proxy
+   First upload the enivironment .env and press "apply" to update the apps settings with the data from the env.
+
+   In the second step you upload the private key to the proxy server to enable realtime fetiching.
+   After upload, press "Use Key" to update the Apps settings.
+   Optionally you can check the keys validity with a key check.
+
+   If you're currently developing the app and have the .env and right private key in your apps folder, you can switch to "developer mode" and skip the uploads.
+
+## Dashboard
+
+## Stops
+
+## Map
+
+
+
 
 
 

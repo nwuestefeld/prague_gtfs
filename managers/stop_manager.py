@@ -7,12 +7,18 @@ import numpy as np
 
 class StopManager:
 
-    def __init__(self):
-        self.api_url = st.session_state["API_URL"]
-        self.db_path = "database.db"
-        if "api_key" not in st.session_state:
-            raise RuntimeError("API key not set – please set it on the Connections page first.")
-        self.headers = {"X-Access-Token": st.session_state["api_key"]}
+    def __init__(self, api_url, db_path, headers):
+        """
+        Initialize StopManager with API and database settings.
+
+        Args:
+            api_url (str): Base URL for the GTFS API.
+            db_path (str): Path to the local SQLite database file.
+            headers (dict): HTTP headers (including API key) for API requests.
+        """
+        self.api_url = api_url
+        self.db_path = db_path
+        self.headers = headers
 
 
     def get_all_stops(self):
