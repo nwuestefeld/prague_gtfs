@@ -1,7 +1,7 @@
 import streamlit as st
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium  # st_folium replaces deprecated folium_static
 import folium
-from folium.plugins import MarkerCluster, HeatMap
+from folium.plugins import MarkerCluster
 import numpy as np
 import pandas as pd
 import sqlite3
@@ -24,6 +24,8 @@ st.title("Stops Analytics")
 """
 Stops Analytics Page: analyze and visualize delays of vehicles at individual stops in Prague.
 
+A third tab, **Stop Throughput Analysis**, lets you explore *average* at‑stop events per hour over a chosen date range.
+
 Users can view stops grouped by name, inspect current vehicle delays at each stop,
 and plot stop locations on a map to identify delay hotspots.
 """
@@ -33,11 +35,12 @@ st.markdown(
     """
     Use **Overview** to browse all Prague stops on an interactive map and in a sortable table.  
     Switch to **Dwell&nbsp;Time&nbsp;Analysis** for insights into how long vehicles actually remain at each stop.
+    Use the **Stop Throughput** tab to analyze average stop throughput per hour over a selected date range.
     """,
     unsafe_allow_html=True,
 )
-tabs = st.tabs(["Overview", "Dwell Time Analysis"])
-overview_tab, dwell_tab = tabs
+tabs = st.tabs(["Overview", "Dwell Time Analysis", "Stop Throughput"])
+overview_tab, dwell_tab = tabs[:2]
 
 with overview_tab:
     # --- Load data from database ---
@@ -188,7 +191,6 @@ with overview_tab:
         }
     )
 
-    # fallback guard – halt gracefully if table is empty
     if stops_grouped_df.empty:
         st.info("No stops found in the database.")
         st.stop()
@@ -239,7 +241,7 @@ with overview_tab:
                     icon=folium.Icon(color='green', icon='info-sign')
                 ).add_to(cluster)
 
-            folium_static(base_map, width=700, height=450)
+            st_folium(base_map, width=700, height=450)
     else:
         # Individual station view
         selected_name = station_choice
@@ -267,7 +269,7 @@ with overview_tab:
                     popup=popup_html,
                     icon=folium.Icon(color='blue', icon='info-sign')
                 ).add_to(base_map)
-            folium_static(base_map, width=700, height=450)
+            st_folium(base_map, width=700, height=450)
         else:
             st.info(f"No platform data available for {selected_name}.")
 
@@ -405,7 +407,7 @@ with dwell_tab:
                                 blur=35,     
                                 max_zoom=13
                             ).add_to(m)
-                            folium_static(m, width=700, height=450)
+                            st_folium(m, width=700, height=450)
 
                         # Average dwell time and event count per stop
                         stats = out.groupby("Stop").agg(
@@ -426,5 +428,4 @@ with dwell_tab:
                         st.caption("Average dwell per stop; bubble size = number of dwell events.")
                     except Exception as exc:
                         st.error(f"Unable to build visualisations: {exc}")
-
 
