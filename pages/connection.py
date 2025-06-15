@@ -14,6 +14,7 @@ import paramiko
 
 
 def settings_page():
+    st.title("Connections Page")
     """Render the Connections page for GTFS data configuration.
 
     Displays controls for:
@@ -21,13 +22,13 @@ def settings_page():
     2. Uploading a PEM key for SSH access (real-time data).
     3. Testing the SSH connection.
     """
-    st.title("Connections Page")
+    
     st.markdown("""
     **Connection Setup**  
     Before you can fetch static or real-time GTFS data, you need:
 
-    1. **API Key** – provides access to the static GTFS endpoint.  
-    2. **PEM Key** – establishes SSH connection to the realtime vehicle-positions server.
+    1. **API Key** - provides access to the static GTFS endpoint.  
+    2. **PEM Key** - establishes SSH connection to the realtime vehicle-positions server.
 
     - Toggle **Developer Mode** to load your API key from `.env`.  
     - Upload your `.pem` file, then click **Connection Test** to verify connectivity.
@@ -110,7 +111,7 @@ def settings_page():
             if st.button("Show Pem content"):
                 st.text("PEM file content:")
                 st.text_area("PEM File Content:", pem_content, height=300)
-            st.success("PEM file is ready to use.")
+            
 
             if st.button("Use Key"):
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".pem") as temp_key_file:
@@ -119,6 +120,7 @@ def settings_page():
                 os.chmod(temp_key_file_path, 0o400) #read only
                 st.session_state["pem_key_content"] = pem_content
                 st.session_state["pem_key_path"] = temp_key_file_path
+                st.success("PEM file is applied successfully and will be used.")
                 #st.success(f".pem file saved temporarily at:\n`{temp_key_file_path}`")
 
         if st.button("Connection Test"):

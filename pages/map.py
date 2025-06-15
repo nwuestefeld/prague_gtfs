@@ -25,16 +25,22 @@ def load_stops():
     return df
 
 
-conn = sqlite3.connect("vehicle_positions.db")
-query = """SELECT * FROM vehicle_positions WHERE delay IS NOT NULL AND delay > 180 AND route_type <> 2"""
+state = "DEMO"
 
 vehicle_type = st.selectbox(
     "Choose vehicle type",
     ["All", "tram", "metro", "bus"]
 )
-
+#if "df" not in st.session_state or st.session_state.df.empty or state != "DEMO":
+st.info("Displaying Build-In Demo. The heatmap will be available in the next release :)")
+conn = sqlite3.connect("vehicle_positions.db")
+query = """SELECT * FROM vehicle_positions WHERE delay IS NOT NULL AND delay > 180 AND route_type <> 2"""
 df = pd.read_sql_query(query, conn)
 conn.close()
+#else:
+#    df = st.session_state.df.copy()
+
+
 df_filtered = df.copy()
 
 if vehicle_type != "All":
@@ -43,6 +49,7 @@ if vehicle_type != "All":
 if df_filtered.empty:
     st.warning("No data available for the selected filter.")
 else:
+    #st.write(df_filtered.columns.tolist())
     heat_data = [[row['latitude'], row['longitude'], row['delay']] for _, row in df_filtered.iterrows()]
 
 #df_stops = load_stops()
