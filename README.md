@@ -85,7 +85,7 @@ To fetch the historic delays a proxy fetching server is obtaining the current de
          pip install -r requirements.txt
          ```
 
-   4. **Get Enviroment file .env and .pem from the admin or optionally build your own**: the .env file should look like this:
+   4. **Get Enviroment file .env and .pem from the admin or optionally build your own**: Both files are used after launch to enable server authentifiction. The .env file should look like this:
       ```bash
       API_KEY=your_api_key_here
       API_URL=https://your-api-url.com/endpoint
