@@ -88,7 +88,7 @@ class RequestManager:
         output = stdout.read().decode()
         error = stderr.read().decode()
 
-        print(repr(output))
+        #print(repr(output))
 
         if error:
             print("Error:", error)
@@ -117,4 +117,5 @@ class RequestManager:
                     "state_position",
                     "timestamp"
                 ]
+                print("Query executed successfully. DataFrame created with shape:", df.shape)
             return df
