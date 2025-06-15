@@ -22,7 +22,7 @@ These tools can help users:
 
    This project was developed collaboratively. Below is a summary of individual contributions:
 
-   - **Nils**  
+   **Nils**  
    Developed the core application logic and backend infrastructure. This includes:
    - App structure and layout
    - Database design and management
@@ -31,7 +31,7 @@ These tools can help users:
    - Trips dashboard and analytics
    - Heatmap visualization of delays
 
-   - **Adam**  
+   **Adam**  
    Focused on Stops dashboard, documentation and frontend usability, including:
    - Stops dashboard and analytics
    - Writing descriptive content and explanations
