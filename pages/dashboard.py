@@ -10,6 +10,11 @@ from shapely import wkt
 from datetime import datetime, time
 
 
+missing_keys = any(
+    key not in st.session_state or st.session_state[key] is None
+    for key in ["SERVER_ADDRESS", "API_URL", "api_key", "pem_key_content", "pem_key_path"]
+)
+
 # Route short name filter
 def _is_valid_short(name: str) -> bool:
     if not isinstance(name, str):
@@ -35,7 +40,7 @@ def _is_valid_short(name: str) -> bool:
 
 
 
-
+st.title("Delay Dashboard")
 
 """
 Delay Dashboard page: interactive tools to analyze and visualize public transport delays in Prague.
@@ -87,7 +92,7 @@ def make_query(start_date, end_date, min_delay, bbox, start_datetime, end_dateti
     """
     minx, miny, maxx, maxy = bbox
     
-    #no idea why date filtering is not working. 
+    
 
     query = (
     "SELECT gtfs_trip_id, vehicle_id, route_type, gtfs_route_short_name, "
@@ -123,6 +128,10 @@ with tab1:
         submitted = st.form_submit_button("Apply")
 
     if submitted:
+        if  missing_keys:
+            st.error("Please set the connection settings first.")
+            st.stop()
+
         if start_date > end_date:
             st.error("Start date must be before end date.")
         if start_date > datetime.now().date():
@@ -182,7 +191,7 @@ with tab1:
             else:
                 st.info("No statistics available for the current selection.")
 
-    # Use df from session state for further plots and filters
+    # Use df from session state
     if "df" in st.session_state and not st.session_state["df"].empty:
         df_session = st.session_state["df"]
         vehicle_types = sorted(df_session['route_type'].dropna().unique())

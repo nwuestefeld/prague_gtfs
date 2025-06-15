@@ -31,7 +31,6 @@ class RequestManager:
 
     def connect(self):
 
-        #TODO: connect to settings
 
         """Establish an SSH connection to the remote database.
 
@@ -41,10 +40,7 @@ class RequestManager:
         Raises:
             paramiko.SSHException: If SSH authentication or connection fails.
         """
-        if "SERVER_ADDRESS" not in st.session_state or "SSH_USER" not in st.session_state or "pem_key_path" not in st.session_state:
-            st.error("Please set the SERVER_ADDRESS, SSH_USER, and pem_key_path in the session state.")
-            print("Missing session state variables: SERVER_ADDRESS, SSH_USER, or pem_key_path")
-            return
+    
         self.hostname = st.session_state["SERVER_ADDRESS"]
         self.username = st.session_state["SSH_USER"]
         print("Connecting to server:", self.hostname)

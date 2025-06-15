@@ -2,11 +2,7 @@ import os
 from dotenv import load_dotenv
 
 
-"""Connections page for configuring API and SSH settings to access GTFS data.
 
-This module provides a Streamlit page where users can enter their API key for static GTFS endpoints,
-upload a PEM file for SSH access to real-time vehicle position data, and test the connection.
-"""
 
 import streamlit as st
 import tempfile
@@ -22,12 +18,16 @@ def settings_page():
     3. Testing the SSH connection.
     """
     st.title("Connections Page")
-    st.markdown("""
+    st.markdown(""" 
+    ### Connections page for configuring API and SSH settings to access GTFS data.
+    The Connections page allows users to enter their API key for static GTFS endpoints,
+    upload a PEM file for SSH access to real-time vehicle position data, and test the connection.        
+
     **Connection Setup**  
     Before you can fetch static or real-time GTFS data, you need:
 
-    1. **API Key** – provides access to the static GTFS endpoint.  
-    2. **PEM Key** – establishes SSH connection to the realtime vehicle-positions server.
+    1. **.env** - provides access to the static GTFS endpoint.  
+    2. **PEM Key** - establishes SSH connection to the realtime vehicle-positions server.
 
     - Toggle **Developer Mode** to load your API key from `.env`.  
     - Upload your `.pem` file, then click **Connection Test** to verify connectivity.
@@ -110,7 +110,7 @@ def settings_page():
             if st.button("Show Pem content"):
                 st.text("PEM file content:")
                 st.text_area("PEM File Content:", pem_content, height=300)
-            st.success("PEM file is ready to use.")
+            
 
             if st.button("Use Key"):
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".pem") as temp_key_file:
@@ -119,6 +119,7 @@ def settings_page():
                 os.chmod(temp_key_file_path, 0o400) #read only
                 st.session_state["pem_key_content"] = pem_content
                 st.session_state["pem_key_path"] = temp_key_file_path
+                st.success("PEM file is applied successfully and will be used.")
                 #st.success(f".pem file saved temporarily at:\n`{temp_key_file_path}`")
 
         if st.button("Connection Test"):
