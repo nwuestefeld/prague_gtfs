@@ -1,7 +1,7 @@
 import streamlit as st
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium  # st_folium replaces deprecated folium_static
 import folium
-from folium.plugins import MarkerCluster, HeatMap
+from folium.plugins import MarkerCluster
 import numpy as np
 import pandas as pd
 import sqlite3
@@ -23,6 +23,8 @@ st.title("Stops Analytics")
 """
 Stops Analytics Page: analyze and visualize delays of vehicles at individual stops in Prague.
 
+A third tab, **Stop Throughput Analysis**, lets you explore *average* at‑stop events per hour over a chosen date range.
+
 Users can view stops grouped by name, inspect current vehicle delays at each stop,
 and plot stop locations on a map to identify delay hotspots.
 """
@@ -35,8 +37,8 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-tabs = st.tabs(["Overview", "Dwell Time Analysis"])
-overview_tab, dwell_tab = tabs
+tabs = st.tabs(["Overview", "Dwell Time Analysis", "Stop Throughput"])
+overview_tab, dwell_tab = tabs[:2]
 
 with overview_tab:
     # --- Load data from database ---
@@ -187,7 +189,6 @@ with overview_tab:
         }
     )
 
-    # fallback guard – halt gracefully if table is empty
     if stops_grouped_df.empty:
         st.info("No stops found in the database.")
         st.stop()
@@ -238,7 +239,7 @@ with overview_tab:
                     icon=folium.Icon(color='green', icon='info-sign')
                 ).add_to(cluster)
 
-            folium_static(base_map, width=700, height=450)
+            st_folium(base_map, width=700, height=450)
     else:
         # Individual station view
         selected_name = station_choice
@@ -266,7 +267,7 @@ with overview_tab:
                     popup=popup_html,
                     icon=folium.Icon(color='blue', icon='info-sign')
                 ).add_to(base_map)
-            folium_static(base_map, width=700, height=450)
+            st_folium(base_map, width=700, height=450)
         else:
             st.info(f"No platform data available for {selected_name}.")
 
@@ -401,7 +402,7 @@ with dwell_tab:
                                 blur=35,     
                                 max_zoom=13
                             ).add_to(m)
-                            folium_static(m, width=700, height=450)
+                            st_folium(m, width=700, height=450)
 
                         # Average dwell time and event count per stop
                         stats = out.groupby("Stop").agg(
@@ -422,3 +423,135 @@ with dwell_tab:
                         st.caption("Average dwell per stop; bubble size = number of dwell events.")
                     except Exception as exc:
                         st.error(f"Unable to build visualisations: {exc}")
+
+# --- Peak Hours Analysis ---------------------------------------------------
+peak_tab = tabs[2]
+with peak_tab:
+    st.subheader("Average Vehicles per Hour – Stop Throughput")
+
+    with st.form("peak_form"):
+        c1, c2 = st.columns(2)
+        with c1:
+            ph_start = st.date_input("Start date", value=pd.Timestamp.now().date())
+        with c2:
+            ph_end   = st.date_input("End date",   value=pd.Timestamp.now().date())
+        run_peak = st.form_submit_button("Analyse")
+
+    if run_peak:
+        if ph_start > ph_end:
+            st.error("Start date is after end date.")
+        elif ph_end > pd.Timestamp.now().date():
+            st.error("End date is in the future.")
+        else:
+            start_dt = f"{ph_start} 00:00:00"
+            end_dt   = f"{ph_end} 23:59:59"
+            sql = (
+                "SELECT vehicle_id, gtfs_trip_id, route_type, "
+                "       latitude, longitude, timestamp "
+                "FROM   vehicle_positions "
+                f"WHERE  timestamp BETWEEN '{start_dt}' AND '{end_dt}' "
+                "ORDER  BY vehicle_id, timestamp"
+            )
+            with st.spinner("This might take a while"):
+                try:
+                    rm = RequestManager()
+                    cols = ["vehicle_id", "gtfs_trip_id", "route_type",
+                            "lat", "lon", "ts"]
+                    peak_df = rm.server_request(sql, columns=cols)
+                except Exception as exc:
+                    st.error(f"Request error: {exc}")
+                    peak_df = pd.DataFrame()
+
+            if "state_position" in peak_df.columns:
+                peak_df = peak_df[peak_df["state_position"] != "before_stop"]
+            peak_df = peak_df.drop(columns=["state_position"], errors="ignore")
+
+            if peak_df.empty:
+                st.info("No data for the selected range.")
+            else:
+                peak_df = peak_df[peak_df["route_type"] != "metro"]
+                peak_df["Stop"] = assign_nearest_parent(
+                    peak_df.rename(columns={"lat": "lat", "lon": "lon"}),
+                    stops_grouped_df
+                )
+                trip_info = TripManager().get_infos_by_trip_id(
+                    peak_df["gtfs_trip_id"].unique().tolist()
+                )
+                trip_info = trip_info.rename(
+                    columns={"trip_id": "gtfs_trip_id", "route_short_name": "Line"}
+                )
+                peak_df = peak_df.merge(trip_info, on="gtfs_trip_id", how="left")
+                peak_df = peak_df[peak_df["Line"].apply(is_valid_line)]
+
+                peak_df = peak_df.sort_values(["vehicle_id", "ts"])
+                peak_df["prev_stop"] = peak_df.groupby("vehicle_id")["Stop"].shift()
+                peak_df["prev_ts"]   = peak_df.groupby("vehicle_id")["ts"].shift()
+                peak_df["break"] = (
+                    (peak_df["Stop"] != peak_df["prev_stop"]) |
+                    (peak_df["vehicle_id"] != peak_df["vehicle_id"].shift()) |
+                    ((pd.to_datetime(peak_df["ts"]) - pd.to_datetime(peak_df["prev_ts"])
+                     ).dt.total_seconds() > 300)
+                )
+                peak_df["group_id"] = peak_df["break"].cumsum()
+
+                groups = (
+                    peak_df.groupby("group_id")
+                    .agg(
+                        vehicle_id=("vehicle_id", "first"),
+                        Stop=("Stop", "first"),
+                        arrival=("ts", "first")
+                    )
+                    .reset_index(drop=True)
+                )
+                groups["hour"] = pd.to_datetime(groups["arrival"]).dt.hour
+
+                if peak_df.empty or groups.empty:
+                    st.info("No Prague in‑service stop events after filtering.")
+                else:
+                    total_hours = ((ph_end - ph_start).days + 1) * 24
+                    counts = (
+                        groups.groupby("Stop")
+                        .size()
+                        .rename("events")
+                        .reset_index()
+                    )
+                    counts["avg_per_hour"] = counts["events"] / total_hours
+                    counts = counts.sort_values("avg_per_hour", ascending=False)
+
+                    st.session_state["peak_counts"] = counts
+                    st.session_state["groups"] = groups
+                    st.session_state["total_hours"] = total_hours
+
+    if "peak_counts" in st.session_state:
+        with st.spinner("Rendering charts and map…"):
+            counts = st.session_state["peak_counts"]
+            total_hours = st.session_state["total_hours"]
+            groups = st.session_state["groups"]
+
+            st.subheader("Average number of Vehicles per Hour – by Stop")
+            fig_bar = px.bar(
+                counts,
+                x="Stop",
+                y="avg_per_hour",
+                labels={"avg_per_hour": "Avg vehicles / hour"},
+                title="Average number of Vehicles per hour"
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
+            st.caption("Average number of vehicles per hour stopping at each stop during the selected period.")
+
+            st.subheader("Density of Stop Throughput")
+            with st.spinner("Rendering heat‑map…"):
+                base_lat = stops_grouped_df["Latitude"].mean()
+                base_lon = stops_grouped_df["Longitude"].mean()
+                peak_map = folium.Map(location=[base_lat, base_lon], zoom_start=12)
+                from folium.plugins import HeatMap
+                heat_points = [
+                    [
+                        stops_grouped_df.loc[stops_grouped_df["Stop"] == row.Stop, "Latitude"].values[0],
+                        stops_grouped_df.loc[stops_grouped_df["Stop"] == row.Stop, "Longitude"].values[0],
+                        row.avg_per_hour
+                    ]
+                    for row in counts.itertuples()
+                ]
+                HeatMap(heat_points, radius=20, blur=30, max_zoom=13).add_to(peak_map)
+                st_folium(peak_map, width=700, height=450)
